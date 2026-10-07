@@ -1,0 +1,34 @@
+КАК ЗАПУСТИТЬ ПРОЕКТ
+====================
+
+Макет TikTok на Expo SDK 57 / React Native 0.86 (expo-router, zustand,
+NativeWind, Reanimated). Код экранов — в src/, данные — src/store/useVideoStore.ts.
+
+Чтобы архив был лёгким, из него убраны папки, которые восстанавливаются
+командами ниже: node_modules, ios/Pods и собранные версии приложения.
+
+НУЖНО
+- Mac с Xcode (проект собирался в Xcode 27, iOS 27)
+- Node.js и npm
+- CocoaPods (brew install cocoapods)
+
+ЗАПУСК В СИМУЛЯТОРЕ
+1. npm install
+2. cd ios && pod install && cd ..
+3. npx expo run:ios
+
+ЗАПУСК НА СВОЁМ АЙФОНЕ
+1. Шаги 1–2 выше.
+2. Открыть ios/tiktokclone.xcworkspace в Xcode.
+3. Target tiktokclone → Signing & Capabilities → Team: выбрать свой Apple ID.
+   Если Xcode ругается на Bundle Identifier — поменять на любой свой
+   (например com.твоеимя.tiktokmockup).
+4. Выбрать айфон сверху и нажать Run (для автономной версии — схема Release).
+
+ВАЖНО: НЕ ЗАПУСКАТЬ `npx expo prebuild --clean`
+Папка ios/ доработана вручную, и эта команда её пересоздаст с нуля:
+- ios/tiktokclone/AppDelegate.swift — SceneDelegate (iOS 27 требует
+  сценовый жизненный цикл, Expo 57 его пока не генерирует);
+- ios/tiktokclone/NoBoldText.mm — системный шрифт без влияния настройки
+  «Жирный шрифт» на айфоне (иначе надписи шире эталона и переносятся);
+- иконка, название «TikTok», чёрная заставка, тёмная тема.

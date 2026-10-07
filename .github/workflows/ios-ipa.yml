@@ -1,0 +1,61 @@
+# Сборка приложения для iPhone на бесплатном Mac от GitHub.
+# Результат — файл .ipa без подписи. Подписать и поставить его на iPhone
+# бесплатно можно через Sideloadly со своим Apple ID (подпись живёт 7 дней).
+# Запуск: вкладка Actions → «iOS IPA» → Run workflow.
+
+name: iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Зависимости
+        run: npm ci || npm install
+
+      - name: Нативный проект iOS
+        run: npx expo prebuild --platform ios --clean --no-install
+
+      - name: CocoaPods
+        working-directory: ios
+        run: pod install
+
+      - name: Сборка (Release, без подписи)
+        working-directory: ios
+        run: |
+          WS=$(ls -d *.xcworkspace | head -1)
+          SCHEME="${WS%.xcworkspace}"
+          echo "Workspace: $WS, scheme: $SCHEME"
+          set -o pipefail
+          xcodebuild -workspace "$WS" -scheme "$SCHEME" \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | tail -n 200
+
+      - name: Упаковка в .ipa
+        working-directory: ios
+        run: |
+          APP=$(ls -d build/Build/Products/Release-iphoneos/*.app | head -1)
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry ../TikTok.ipa Payload
+          ls -lh ../TikTok.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TikTok-ipa
+          path: TikTok.ipa
