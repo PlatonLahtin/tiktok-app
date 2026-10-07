@@ -39,5 +39,5 @@ yarn-error.*
 example
 
 # generated native folders
-/ios
+# /ios — своя iOS-часть (SceneDelegate, NoBoldText), хранится в репозитории
 /android

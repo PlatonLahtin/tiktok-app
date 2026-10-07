@@ -29,8 +29,9 @@ jobs:
       - name: Зависимости
         run: npm ci || npm install
 
-      - name: Нативный проект iOS
-        run: npx expo prebuild --platform ios --clean --no-install
+      # Папка ios берётся из репозитория как есть: в ней дописанный вручную
+      # SceneDelegate (без него iOS 27 показывает чёрный экран) и NoBoldText.
+      # Поэтому НЕ запускаем expo prebuild --clean — он бы это стёр.
 
       - name: CocoaPods
         working-directory: ios
