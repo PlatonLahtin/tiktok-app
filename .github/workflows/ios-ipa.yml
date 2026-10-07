@@ -8,6 +8,9 @@ name: iOS IPA
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-latest
@@ -52,6 +55,9 @@ jobs:
           APP=$(ls -d build/Build/Products/Release-iphoneos/*.app | head -1)
           mkdir -p Payload
           cp -R "$APP" Payload/
+          echo "Содержимое .app:"; ls -la "$APP" | head -50
+          test -f "$APP/main.jsbundle" || { echo "НЕТ main.jsbundle — JS не вшит в приложение"; exit 1; }
+          ls -lh "$APP/main.jsbundle"
           zip -qry ../TikTok.ipa Payload
           ls -lh ../TikTok.ipa
 
@@ -59,3 +65,15 @@ jobs:
         with:
           name: TikTok-ipa
           path: TikTok.ipa
+
+      # копия .ipa в ветку «ipa» — оттуда её можно забрать через git
+      - name: Положить .ipa в ветку ipa
+        run: |
+          mkdir -p /tmp/ipa && cp TikTok.ipa /tmp/ipa/
+          cd /tmp/ipa
+          git init -q -b ipa
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add TikTok.ipa
+          git commit -q -m "TikTok.ipa из сборки ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ipa
