@@ -3,8 +3,8 @@
    три точки, снизу полоса с просмотрами и кнопкой.
    Все числа сняты с эталона, в точках экрана. */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Image, StatusBar, Dimensions, Pressable, StyleSheet, FlatList } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Image, StatusBar, Dimensions, Pressable, StyleSheet, FlatList, PanResponder, Platform } from 'react-native';
 import { TouchableOpacity } from '../../components/Touchable';
 import { Text } from '../../components/FixedText';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
@@ -78,6 +78,39 @@ export default function ProfileVideoScreen() {
   const myVideos = useVideoStore((s) => s.myVideos);
   const start = Math.max(0, myVideos.findIndex((v) => v.id === id));
   const [active, setActive] = useState(start);
+  const activeRef = useRef(start);
+  activeRef.current = active;
+  const listRef = useRef<FlatList<MyVideo>>(null);
+  const count = myVideos.length;
+  const countRef = useRef(count);
+  countRef.current = count;
+
+  /* В браузере мышью список не тянется (только колёсиком), поэтому там
+     листание сделано своим жестом: тянешь вверх/вниз — страница едет за
+     курсором, отпустил — встаёт на следующее/предыдущее видео.
+     На телефоне работает обычная прокрутка списка. */
+  const dragBase = useRef<number | null>(null);   // с какого видео начали тянуть
+  const swipe = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponderCapture: (_, g) =>
+      Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.2,
+    onPanResponderGrant: () => { dragBase.current = activeRef.current; },
+    onPanResponderMove: (_, g) => {
+      const base = dragBase.current ?? activeRef.current;
+      listRef.current?.scrollToOffset({ offset: base * height - g.dy, animated: false });
+    },
+    onPanResponderRelease: (_, g) => settle(g.dy, g.vy),
+    onPanResponderTerminate: (_, g) => settle(g.dy, g.vy),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
+  function settle(dy: number, vy: number) {
+    let i = dragBase.current ?? activeRef.current;
+    dragBase.current = null;
+    if (dy < -60 || vy < -0.5) i += 1;
+    else if (dy > 60 || vy > 0.5) i -= 1;
+    i = Math.max(0, Math.min(countRef.current - 1, i));
+    listRef.current?.scrollToOffset({ offset: i * height, animated: true });
+    setActive(i);
+  }
 
   if (myVideos.length === 0) {
     return (
@@ -90,7 +123,9 @@ export default function ProfileVideoScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
       <StatusBar barStyle="light-content" />
+      <View style={{ flex: 1 }} {...(Platform.OS === 'web' ? swipe.panHandlers : {})}>
       <FlatList
+        ref={listRef}
         data={myVideos}
         keyExtractor={(v) => v.id}
         renderItem={({ item, index }) => <VideoPage video={item} active={index === active} />}
@@ -102,6 +137,7 @@ export default function ProfileVideoScreen() {
         getItemLayout={(_, i) => ({ length: height, offset: height * i, index: i })}
         /* какое видео сейчас на экране — по прокрутке (так работает и в браузере) */
         onScroll={(e) => {
+          if (dragBase.current !== null) return;   // пока тянут мышью — не переключаем
           const i = Math.round(e.nativeEvent.contentOffset.y / height);
           if (i !== active && i >= 0 && i < myVideos.length) setActive(i);
         }}
@@ -110,6 +146,7 @@ export default function ProfileVideoScreen() {
         initialNumToRender={1}
         maxToRenderPerBatch={2}
       />
+      </View>
     </View>
   );
 }
