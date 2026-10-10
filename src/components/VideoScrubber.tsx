@@ -24,8 +24,8 @@ export const SCRUB = {
   bottom: 82.8,             // нижний край полосы от низа экрана (над разделителем панели)
   hit: 30,                  // зона, за которую можно хвататься: чуть выше полосы
   hitBelow: 7,              // и немного ниже неё — до кнопок панели
-  play:  { h: 2,    track: '#1f1f1f', fill: '#808080' },
-  pause: { h: 4.3,  track: '#333333', fill: '#ffffff', knob: 7.7 },
+  play:  { h: 2,    track: '#1f1f1f', fill: '#808080', knob: 3.7 },   // шарик чуть толще полосы
+  pause: { h: 4.3,  track: '#333333', fill: '#ffffff', knob: 8 },
   drag:  { h: 12.3, track: '#343434', fill: '#c0c0c0', knobW: 9.3, knobH: 16 },
   preview: { w: 87.3, h: 140, top: 584, radius: 7, border: '#9a9a9a' },
   time: { top: 740.5, font: 16.5, now: '#f6f6f6', rest: '#999999', slashGap: 9 },
@@ -134,19 +134,24 @@ export function ScrubBar({ frac, mode, onStart, onMove, onEnd }: {
       <View pointerEvents="none" style={{ height: S.h, width: barW }}>
         <View style={{
           position: 'absolute', left: 0, right: 0, bottom: 0, height: S.h,
-          backgroundColor: S.track, borderRadius: mode === 'drag' ? S.h / 2 : 0, overflow: 'hidden',
+          /* концы полосы скруглены во всех трёх видах — как в приложении */
+          backgroundColor: S.track, borderRadius: S.h / 2, overflow: 'hidden',
         }}>
-          <View style={{ width: fillW, height: S.h, backgroundColor: S.fill }} />
+          <View style={{ width: fillW, height: S.h, backgroundColor: S.fill, borderRadius: S.h / 2 }} />
         </View>
 
-        {mode === 'pause' && (
-          <View style={{
-            position: 'absolute', left: fillW - SCRUB.pause.knob / 2,
-            bottom: (SCRUB.pause.h - SCRUB.pause.knob) / 2,
-            width: SCRUB.pause.knob, height: SCRUB.pause.knob, borderRadius: SCRUB.pause.knob / 2,
-            backgroundColor: '#ffffff',
-          }} />
-        )}
+        {/* шарик на конце: на паузе белый побольше, пока идёт — маленький серый */}
+        {(mode === 'pause' || mode === 'play') && (() => {
+          const K = mode === 'pause' ? SCRUB.pause : SCRUB.play;
+          return (
+            <View style={{
+              position: 'absolute', left: Math.min(Math.max(fillW - K.knob / 2, 0), barW - K.knob),
+              bottom: (K.h - K.knob) / 2,
+              width: K.knob, height: K.knob, borderRadius: K.knob / 2,
+              backgroundColor: K.fill,
+            }} />
+          );
+        })()}
         {mode === 'drag' && (
           <View style={{
             position: 'absolute', left: Math.min(Math.max(fillW - SCRUB.drag.knobW / 2, 0), barW - SCRUB.drag.knobW),
