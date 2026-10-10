@@ -308,7 +308,7 @@ export default function ProfileScreen() {
                   </Svg>
                   <Text style={{
                     color: '#ffffff', fontSize: PLAY.font,
-                    fontWeight: '800', marginLeft: PLAY.gap,
+                    fontWeight: '600', marginLeft: PLAY.gap,   // по эталону: полужирный, не жирный
                   }}>
                     {shownCount(video, 'tileViews')}
                   </Text>

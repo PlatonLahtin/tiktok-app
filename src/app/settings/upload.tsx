@@ -4,13 +4,14 @@
    Ниже — список роликов ленты: ненужные можно убрать. */
 
 import React, { useState } from 'react';
-import { View, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, ActivityIndicator, Alert, ScrollView, Platform } from 'react-native';
 import { TouchableOpacity } from '../../components/Touchable';
 import { Text } from '../../components/FixedText';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Flame, UserRound, CircleCheck, Trash2 } from 'lucide-react-native';
 import { useVideoStore, keepVideoFile } from '../../store/useVideoStore';
+import { pickWebFile, keepWebBlob, webVideoDuration } from '../../lib/webFiles';
 import { shortCount } from '../../lib/videoStats';
 import VideoFrame from '../../components/VideoFrame';
 import { ScreenHeader, MenuCard, UI } from '../../components/settings/ui';
@@ -43,7 +44,30 @@ export default function UploadVideo() {
     );
   };
 
+  /* В браузере на компьютере: обычное окно выбора файла. Ролик кладётся
+     в хранилище браузера и остаётся после перезагрузки страницы. */
+  const pickOnComputer = async (target: Target) => {
+    const file = await pickWebFile('video/*');
+    if (!file) return;
+    setBusy(target);
+    setDone(null);
+    try {
+      const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
+      const uri = await keepWebBlob(file, 'videos', ext);
+      const duration = (await webVideoDuration(uri)) ?? 15;
+      if (target === 'feed') addFeedVideo({ uri });
+      else addMyVideo({ uri, duration });
+      setDone(target);
+    } catch {
+      setWebError('Не удалось сохранить видео. Попробуй другое (лучше .mp4).');
+    } finally {
+      setBusy(null);
+    }
+  };
+  const [webError, setWebError] = useState<string | null>(null);
+
   const pick = async (target: Target) => {
+    if (Platform.OS === 'web') { setWebError(null); return pickOnComputer(target); }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert('Нет доступа к галерее', 'Разреши доступ к фото и видео в настройках телефона.');
@@ -75,7 +99,7 @@ export default function UploadVideo() {
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: UI.side, paddingTop: 4, paddingBottom: 60 }}>
         <Text style={{ color: UI.muted, fontSize: 13, margin: 4, marginBottom: 12 }}>
-          Куда добавить видео из галереи?
+          {Platform.OS === 'web' ? 'Куда добавить видео с компьютера?' : 'Куда добавить видео из галереи?'}
         </Text>
 
         <MenuCard
@@ -90,6 +114,10 @@ export default function UploadVideo() {
           subtitle="Новое видео в профиле, статистика по нулям"
           onPress={() => !busy && pick('profile')}
         />
+
+        {webError && (
+          <Text style={{ color: UI.accent, fontSize: 14, textAlign: 'center', padding: 12 }}>{webError}</Text>
+        )}
 
         {busy && (
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 18 }}>

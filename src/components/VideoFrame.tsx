@@ -12,10 +12,12 @@
    обычные — их просто обрезаем по рамке. */
 
 import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
 import { Image } from 'expo-image';
+import { Asset } from 'expo-asset';
 import { createVideoPlayer, VideoThumbnail } from 'expo-video';
 import { MY_VIDEO_SRC } from '../store/useVideoStore';
+import { webVideoFrame } from '../lib/webFiles';
 
 const DEFAULT_FRAME = { w: 720, h: 1280, bandH: 588 };
 
@@ -37,6 +39,11 @@ function waitReady(player: ReturnType<typeof createVideoPlayer>, ms: number) {
 }
 
 async function grabFrame(source: any): Promise<VideoThumbnail | null> {
+  /* в браузере expo-video кадры не вынимает — берём кадр через <video> и canvas */
+  if (Platform.OS === 'web') {
+    const src = typeof source === 'number' ? Asset.fromModule(source).uri : source?.uri;
+    return src ? ((await webVideoFrame(src)) as unknown as VideoThumbnail | null) : null;
+  }
   const player = createVideoPlayer(source);
   player.muted = true;
   try {

@@ -22,8 +22,8 @@ export default function TabsLayout() {
         /* кнопки вкладок при нажатии не тускнеют — как в TikTok */
         tabBarButton: (props) => <PlatformPressable {...(props as any)} pressOpacity={1} />,   // подписи не зависят от «Размера текста» айфона
         tabBarLabelStyle: {
-          fontSize: 10,        // размер и жирность сняты с эталона
-          fontWeight: '700',
+          fontSize: 10,        // размер снят с эталона
+          fontWeight: '500',   // по эталону подписи средней толщины, не жирные
         },
       }}
     >

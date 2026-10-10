@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { File, Directory, Paths } from 'expo-file-system';
+import { Platform } from 'react-native';
+import { keepWebFile, webUri, warmWebFiles, storedJSON, dropWebFile } from '../lib/webFiles';
 import { AV1, AV2, ME } from '../constants/mockAssets';
 import {
   VideoStats, DEFAULT_STATS, emptyStats, publishedNow, randomFeedStats, FeedCounts, normalizeStats,
@@ -145,6 +147,8 @@ function migrateMyVideo(v: any): MyVideo {
 /* Файл из галереи копируем в папку приложения — галерейная копия
    временная и может пропасть после перезапуска. */
 async function keepFile(pickedUri: string, folder: string, fallbackExt: string): Promise<string> {
+  /* в браузере папки приложения нет — файл ложится в хранилище браузера */
+  if (Platform.OS === 'web') return keepWebFile(pickedUri, folder, fallbackExt);
   const dir = new Directory(Paths.document, folder);
   if (!dir.exists) dir.create({ intermediates: true, idempotent: true });
   const ext = (pickedUri.split('?')[0].split('.').pop() || fallbackExt).toLowerCase();
@@ -163,6 +167,7 @@ export const keepImageFile = (uri: string) => keepFile(uri, 'images', 'jpg');
 const CELL = /\/(Data|Bundle)\/Application\/[0-9A-Fa-f-]{36}\//;
 const cellOf = (uri: string) => uri.match(CELL)?.[0];
 export function liveUri<T>(uri: T): T {
+  if (Platform.OS === 'web') return webUri(uri);
   if (typeof uri !== 'string' || !uri.startsWith('file:')) return uri;
   const kind = uri.match(CELL)?.[1];
   const now = kind === 'Data' ? cellOf(Paths.document.uri) : kind === 'Bundle' ? cellOf(ME) : undefined;
@@ -178,11 +183,20 @@ function snapshotOf(v: MyVideo) {
 
 /* удалить свой файл из памяти приложения; встроенные ролики не трогаем */
 function dropFile(uri: string | undefined) {
+  if (Platform.OS === 'web') { dropWebFile(uri); return; }
   if (!uri || !uri.startsWith('file:')) return;
   try { const f = new File(uri); if (f.exists) f.delete(); } catch { /* уже нет — и ладно */ }
 }
 
 import { create } from 'zustand';
+
+/* Чтение сохранённого. В браузере сначала достаём из хранилища файлы
+   (свои видео и картинки), на которые ссылаются данные. */
+async function getStored(key: string) {
+  const raw = await AsyncStorage.getItem(key);
+  if (Platform.OS === 'web') await warmWebFiles(raw);
+  return raw;
+}
 
 const DEFAULT_USER: UserProfile = {
   name: 'Пользователь',
@@ -213,7 +227,7 @@ const infoOf = (id: string, u: UserProfile): AccountInfo =>
   ({ id, name: u.name, username: u.username, avatar: u.avatar });
 
 function saveAccounts(list: AccountInfo[]) {
-  AsyncStorage.setItem(ACCOUNTS_KEY, JSON.stringify({ list, current: account })).catch(() => {});
+  AsyncStorage.setItem(ACCOUNTS_KEY, storedJSON({ list, current: account })).catch(() => {});
 }
 
 /* подставить свежие имя/ник/аватарку открытого аккаунта в список */
@@ -322,7 +336,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
   /* запуск: узнаём, какой аккаунт открыт, и достаём его данные */
   hydrateAll: async () => {
     try {
-      const raw = await AsyncStorage.getItem(ACCOUNTS_KEY);
+      const raw = await getStored(ACCOUNTS_KEY);
       if (raw) {
         const saved = JSON.parse(raw);
         const list: AccountInfo[] = (saved.list ?? []).map((a: AccountInfo) => ({ ...a, avatar: liveUri(a.avatar) }));
@@ -377,8 +391,8 @@ export const useVideoStore = create<VideoState>((set, get) => ({
     if (id === account) await get().switchAccount(rest[0].id);
     try {
       const [mine, feed] = await Promise.all([
-        AsyncStorage.getItem(keyFor(MYVIDEOS_KEY, id)),
-        AsyncStorage.getItem(keyFor(FEEDMINE_KEY, id)),
+        getStored(keyFor(MYVIDEOS_KEY, id)),
+        getStored(keyFor(FEEDMINE_KEY, id)),
       ]);
       (mine ? JSON.parse(mine) : []).forEach((v: MyVideo) => dropFile(liveUri(v.uri) ?? undefined));
       (feed ? JSON.parse(feed) : []).forEach((v: VideoPost) => dropFile(liveUri(v.videoUrl?.uri)));
@@ -402,7 +416,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
     set((state) => {
       const next = { ...state.currentUser, ...profile };
       // пишем в память телефона, чтобы пережило перезапуск
-      AsyncStorage.setItem(k(PROFILE_KEY), JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(k(PROFILE_KEY), storedJSON(next)).catch(() => {});
       const accounts = syncAccount(state.accounts, next);
       return { currentUser: next, accounts };
     }),
@@ -426,7 +440,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
         : { ...defaultMyVideo(), id: `my-${Date.now()}` };
       /* как в TikTok: новое видео — первым, слева сверху */
       const next = [video, ...state.myVideos];
-      AsyncStorage.setItem(k(MYVIDEOS_KEY), JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(k(MYVIDEOS_KEY), storedJSON(next)).catch(() => {});
       return { myVideos: next };
     }),
 
@@ -434,21 +448,21 @@ export const useVideoStore = create<VideoState>((set, get) => ({
     set((state) => {
       dropFile(state.myVideos.find((v) => v.id === id)?.uri ?? undefined);
       const next = state.myVideos.filter((v) => v.id !== id);
-      AsyncStorage.setItem(k(MYVIDEOS_KEY), JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(k(MYVIDEOS_KEY), storedJSON(next)).catch(() => {});
       return { myVideos: next };
     }),
 
   updateMyVideo: (id, patch) =>
     set((state) => {
       const next = state.myVideos.map((v) => (v.id === id ? { ...v, ...patch } : v));
-      AsyncStorage.setItem(k(MYVIDEOS_KEY), JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(k(MYVIDEOS_KEY), storedJSON(next)).catch(() => {});
       return { myVideos: next };
     }),
 
   updateMyVideoStats: (id, patch) =>
     set((state) => {
       const next = state.myVideos.map((v) => (v.id === id ? { ...v, stats: { ...v.stats, ...patch } } : v));
-      AsyncStorage.setItem(k(MYVIDEOS_KEY), JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(k(MYVIDEOS_KEY), storedJSON(next)).catch(() => {});
       return { myVideos: next };
     }),
 
@@ -466,7 +480,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
         ...snapshotOf(v),
       };
       const next = [preset, ...state.presets];
-      AsyncStorage.setItem(PRESETS_KEY, JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(PRESETS_KEY, storedJSON(next)).catch(() => {});
       return { presets: next };
     }),
 
@@ -475,7 +489,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       const v = state.myVideos.find((x) => x.id === videoId);
       if (!v) return {};
       const next = state.presets.map((p) => (p.id === presetId ? { ...p, savedAt: Date.now(), ...snapshotOf(v) } : p));
-      AsyncStorage.setItem(PRESETS_KEY, JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(PRESETS_KEY, storedJSON(next)).catch(() => {});
       return { presets: next };
     }),
 
@@ -488,20 +502,20 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       const next = state.myVideos.map((v) => (v.id === videoId
         ? { ...v, stats: copy.stats, date: copy.date, description: copy.description, display: copy.display }
         : v));
-      AsyncStorage.setItem(k(MYVIDEOS_KEY), JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(k(MYVIDEOS_KEY), storedJSON(next)).catch(() => {});
       return { myVideos: next };
     }),
 
   removePreset: (presetId) =>
     set((state) => {
       const next = state.presets.filter((p) => p.id !== presetId);
-      AsyncStorage.setItem(PRESETS_KEY, JSON.stringify(next)).catch(() => {});
+      AsyncStorage.setItem(PRESETS_KEY, storedJSON(next)).catch(() => {});
       return { presets: next };
     }),
 
   hydratePresets: async () => {
     try {
-      const raw = await AsyncStorage.getItem(PRESETS_KEY);
+      const raw = await getStored(PRESETS_KEY);
       const list = raw ? JSON.parse(raw) : [];
       if (Array.isArray(list)) {
         set({
@@ -522,7 +536,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
 
   hydrateMyVideos: async () => {
     try {
-      const raw = await AsyncStorage.getItem(k(MYVIDEOS_KEY));
+      const raw = await getStored(k(MYVIDEOS_KEY));
       if (raw) {
         const list = JSON.parse(raw);
         /* старые записи переводим в новый вид и сразу пересохраняем */
@@ -535,7 +549,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
               : v.stats,
           }));
           set({ myVideos: next });
-          AsyncStorage.setItem(k(MYVIDEOS_KEY), JSON.stringify(next)).catch(() => {});
+          AsyncStorage.setItem(k(MYVIDEOS_KEY), storedJSON(next)).catch(() => {});
         }
       }
     } catch {
@@ -559,7 +573,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
         comments: [],
       };
       const mine = [video, ...state.videos.filter((v) => v.id.startsWith('feed-'))];
-      AsyncStorage.setItem(k(FEEDMINE_KEY), JSON.stringify(mine)).catch(() => {});
+      AsyncStorage.setItem(k(FEEDMINE_KEY), storedJSON(mine)).catch(() => {});
       return { videos: [video, ...state.videos] };
     }),
 
@@ -568,15 +582,15 @@ export const useVideoStore = create<VideoState>((set, get) => ({
   hydrateFeed: async () => {
     try {
       const [rawStats, rawMine] = await Promise.all([
-        AsyncStorage.getItem(k(FEEDSTATS_KEY)),
-        AsyncStorage.getItem(k(FEEDMINE_KEY)),
+        getStored(k(FEEDSTATS_KEY)),
+        getStored(k(FEEDMINE_KEY)),
       ]);
       const mine: VideoPost[] = (rawMine ? JSON.parse(rawMine) : []).map((v: VideoPost) => ({
         ...v,
         videoUrl: v.videoUrl?.uri ? { uri: liveUri(v.videoUrl.uri) } : v.videoUrl,
         userAvatar: liveUri(v.userAvatar),
       }));
-      const rawHidden = await AsyncStorage.getItem(k(FEEDHIDDEN_KEY));
+      const rawHidden = await getStored(k(FEEDHIDDEN_KEY));
       if (rawHidden) set({ hiddenVideoIds: JSON.parse(rawHidden) });
       set((state) => {
         let saved: Record<string, FeedCounts> = rawStats ? JSON.parse(rawStats) : {};
@@ -586,7 +600,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
           saved = Object.fromEntries(withStats.map((v) => [v.id, {
             views: v.views, likes: v.likes, commentsCount: v.commentsCount, saves: v.saves, shares: v.shares,
           }]));
-          AsyncStorage.setItem(k(FEEDSTATS_KEY), JSON.stringify(saved)).catch(() => {});
+          AsyncStorage.setItem(k(FEEDSTATS_KEY), storedJSON(saved)).catch(() => {});
         }
         return { videos: [...mine, ...withStats] };
       });
@@ -598,7 +612,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
   // читаем сохранённое при запуске приложения
   hydrateProfile: async () => {
     try {
-      const raw = await AsyncStorage.getItem(k(PROFILE_KEY));
+      const raw = await getStored(k(PROFILE_KEY));
       if (raw) {
         const saved = JSON.parse(raw);
         if (saved.avatar) saved.avatar = liveUri(saved.avatar);
@@ -782,11 +796,11 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       const video = state.videos.find((v) => v.id === id);
       dropFile(video?.videoUrl?.uri);
       const videos = state.videos.filter((v) => v.id !== id);
-      AsyncStorage.setItem(k(FEEDMINE_KEY), JSON.stringify(videos.filter((v) => v.id.startsWith('feed-')))).catch(() => {});
+      AsyncStorage.setItem(k(FEEDMINE_KEY), storedJSON(videos.filter((v) => v.id.startsWith('feed-')))).catch(() => {});
       return { videos };
     }
     const hiddenVideoIds = [...new Set([...state.hiddenVideoIds, id])];
-    AsyncStorage.setItem(k(FEEDHIDDEN_KEY), JSON.stringify(hiddenVideoIds)).catch(() => {});
+    AsyncStorage.setItem(k(FEEDHIDDEN_KEY), storedJSON(hiddenVideoIds)).catch(() => {});
     return { hiddenVideoIds };
   }),
 
