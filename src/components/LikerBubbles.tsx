@@ -24,6 +24,30 @@ const L = {
   delay: 1000,                            // пауза после открытия экрана
 };
 
+/* Очередь лиц в случайном порядке: каждый раз при открытии видео своя.
+   Лицо не повторяется, пока оно ещё видно на экране (среди последних
+   «slots» кружков), а когда все лица показаны — колода тасуется заново. */
+function useRandomOrder(count: number, window: number) {
+  const order = useRef<number[]>([]);
+  const bag = useRef<number[]>([]);
+  return (i: number) => {
+    while (order.current.length <= i) {
+      if (bag.current.length === 0) {
+        bag.current = Array.from({ length: count }, (_, k) => k);
+        for (let k = bag.current.length - 1; k > 0; k--) {
+          const j = Math.floor(Math.random() * (k + 1));
+          [bag.current[k], bag.current[j]] = [bag.current[j], bag.current[k]];
+        }
+      }
+      const recent = order.current.slice(-(window - 1));
+      let pos = bag.current.findIndex((v) => !recent.includes(v));
+      if (pos < 0) pos = 0;
+      order.current.push(bag.current.splice(pos, 1)[0]);
+    }
+    return order.current[i];
+  };
+}
+
 /* Прозрачность зависит от места: снизу быстро набирается,
    сверху медленно сходит на нет. */
 function slotOpacity(t: Animated.Value, slot: number) {
@@ -35,6 +59,7 @@ function slotOpacity(t: Animated.Value, slot: number) {
 export default function LikerBubbles() {
   const t = useRef(new Animated.Value(0)).current;
   const [step, setStep] = useState(-1);   // -1 — ещё ни одного кружка
+  const faceAt = useRandomOrder(AVATARS.length, L.slots);
 
   useEffect(() => {
     let stopped = false;
@@ -65,7 +90,7 @@ export default function LikerBubbles() {
            так они и выходят по одному после открытия экрана */
         .filter((slot) => slot <= step)
         .map((slot) => {
-          const avatar = AVATARS[(((step - slot) % AVATARS.length) + AVATARS.length) % AVATARS.length];
+          const avatar = AVATARS[faceAt(step - slot)];
           return (
             <Animated.View
               key={slot}

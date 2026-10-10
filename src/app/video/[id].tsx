@@ -214,8 +214,9 @@ export default function ProfileVideoScreen() {
           При одной строке всё стоит ровно там же, где и раньше. */}
       <View style={{ position: 'absolute', left: V.textLeft, bottom: V.descBottom, width: V.textWidth, zIndex: 10 }}>
         <View style={{ flexDirection: 'row' }}>
-          <Text style={{ color: '#ffffff', fontSize: V.nameFont, fontWeight: '700', lineHeight: V.nameLine }}>
-            {currentUser.username}
+          {/* над описанием — ник (имя профиля), а не @имя пользователя */}
+          <Text numberOfLines={1} style={{ flexShrink: 1, color: '#ffffff', fontSize: V.nameFont, fontWeight: '700', lineHeight: V.nameLine }}>
+            {currentUser.name}
           </Text>
           <Text style={{
             color: V.dateColor, fontSize: V.dateFont, fontWeight: '700',
