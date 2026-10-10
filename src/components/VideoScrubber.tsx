@@ -96,8 +96,9 @@ export function ScrubPreview({ player, frac, duration }: { player: VideoPlayer; 
 }
 
 /* сама полоса. frac — где сейчас (0…1). mode: идёт / пауза / тянут */
-export function ScrubBar({ frac, mode, onStart, onMove, onEnd, onTouch }: {
-  frac: number; mode: 'play' | 'pause' | 'drag';
+export function ScrubBar({ getTime, duration, active = true, mode, onStart, onMove, onEnd, onTouch }: {
+  getTime: () => number; duration: number; active?: boolean;
+  mode: 'play' | 'pause' | 'drag';
   onStart: (f: number) => void; onMove: (f: number) => void; onEnd: (f: number) => void;
   /* палец на полосе / убран — чтобы экран сразу перестал листаться */
   onTouch?: (down: boolean) => void;
@@ -106,8 +107,34 @@ export function ScrubBar({ frac, mode, onStart, onMove, onEnd, onTouch }: {
   const offset = useRef(0);   // где полоса на странице (pageX её левого края)
   const toFrac = (pageX: number) => Math.min(1, Math.max(0, (pageX - offset.current) / barW));
 
+  /* Положение полосы — анимированное значение, а не состояние экрана:
+     так она двигается каждый кадр (плавно), а весь экран не перерисовывается.
+     Пока видео идёт — каждый кадр берём время прямо у плеера;
+     пока тянут — ставим туда, где палец. */
+  const pos = useRef(new Animated.Value(0)).current;
+  const draggingRef = useRef(false);
+  const durRef = useRef(duration);
+  durRef.current = duration;
+  const timeRef = useRef(getTime);
+  timeRef.current = getTime;
+  useEffect(() => {
+    if (!active) return;
+    let raf = 0;
+    const tick = () => {
+      if (!draggingRef.current && durRef.current > 0) {
+        let t = 0;
+        try { t = timeRef.current() || 0; } catch { /* плеер отпущен */ }
+        pos.setValue(Math.min(1, Math.max(0, t / durRef.current)));
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [active, pos]);
+
   const handlers = useRef({ onStart, onMove, onEnd });
   handlers.current = { onStart, onMove, onEnd };
+  const lastMove = useRef(0);
 
   const pan = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
@@ -116,16 +143,39 @@ export function ScrubBar({ frac, mode, onStart, onMove, onEnd, onTouch }: {
     onPanResponderGrant: (e) => {
       /* locationX — от края зоны (дети её не перехватывают), pageX — от края страницы */
       offset.current = e.nativeEvent.pageX - e.nativeEvent.locationX;
-      handlers.current.onStart(toFrac(e.nativeEvent.pageX));
+      const f = toFrac(e.nativeEvent.pageX);
+      draggingRef.current = true;
+      pos.setValue(f);
+      handlers.current.onStart(f);
     },
-    onPanResponderMove: (e) => handlers.current.onMove(toFrac(e.nativeEvent.pageX)),
-    onPanResponderRelease: (e) => handlers.current.onEnd(toFrac(e.nativeEvent.pageX)),
-    onPanResponderTerminate: (e) => handlers.current.onEnd(toFrac(e.nativeEvent.pageX)),
+    onPanResponderMove: (e) => {
+      const f = toFrac(e.nativeEvent.pageX);
+      pos.setValue(f);                         // полоса — сразу, каждый кадр
+      const now = Date.now();
+      if (now - lastMove.current > 50) {       // кадр и время над полосой — ~20 раз в секунду
+        lastMove.current = now;
+        handlers.current.onMove(f);
+      }
+    },
+    onPanResponderRelease: (e) => finish(toFrac(e.nativeEvent.pageX)),
+    onPanResponderTerminate: (e) => finish(toFrac(e.nativeEvent.pageX)),
   })).current;
+  function finish(f: number) {
+    pos.setValue(f);
+    handlers.current.onEnd(f);
+    /* плеер ещё секунду может отдавать старое время — не дёргаем полосу назад */
+    setTimeout(() => { draggingRef.current = false; }, 250);
+  }
 
-  const f = Math.min(1, Math.max(0, frac || 0));
   const S = mode === 'drag' ? SCRUB.drag : mode === 'pause' ? SCRUB.pause : SCRUB.play;
-  const fillW = f * barW;
+  const fillW = pos.interpolate({ inputRange: [0, 1], outputRange: [0, barW], extrapolate: 'clamp' });
+  /* шарик: по центру конца заливки, но не вылезает за края полосы */
+  const knobLeft = (k: number) => pos.interpolate({
+    inputRange: [0, k / 2 / barW, 1 - k / 2 / barW, 1],
+    outputRange: [0, 0, barW - k, barW - k],
+    extrapolate: 'clamp',
+  });
+  const K = mode === 'pause' ? SCRUB.pause : SCRUB.play;
 
   return (
     <View
@@ -144,24 +194,20 @@ export function ScrubBar({ frac, mode, onStart, onMove, onEnd, onTouch }: {
           /* концы полосы скруглены во всех трёх видах — как в приложении */
           backgroundColor: S.track, borderRadius: S.h / 2, overflow: 'hidden',
         }}>
-          <View style={{ width: fillW, height: S.h, backgroundColor: S.fill, borderRadius: S.h / 2 }} />
+          <Animated.View style={{ width: fillW, height: S.h, backgroundColor: S.fill, borderRadius: S.h / 2 }} />
         </View>
 
         {/* шарик на конце: на паузе белый побольше, пока идёт — маленький серый */}
-        {(mode === 'pause' || mode === 'play') && (() => {
-          const K = mode === 'pause' ? SCRUB.pause : SCRUB.play;
-          return (
-            <View style={{
-              position: 'absolute', left: Math.min(Math.max(fillW - K.knob / 2, 0), barW - K.knob),
-              bottom: (K.h - K.knob) / 2,
-              width: K.knob, height: K.knob, borderRadius: K.knob / 2,
-              backgroundColor: K.fill,
-            }} />
-          );
-        })()}
-        {mode === 'drag' && (
-          <View style={{
-            position: 'absolute', left: Math.min(Math.max(fillW - SCRUB.drag.knobW / 2, 0), barW - SCRUB.drag.knobW),
+        {mode !== 'drag' ? (
+          <Animated.View style={{
+            position: 'absolute', left: knobLeft(K.knob),
+            bottom: (K.h - K.knob) / 2,
+            width: K.knob, height: K.knob, borderRadius: K.knob / 2,
+            backgroundColor: K.fill,
+          }} />
+        ) : (
+          <Animated.View style={{
+            position: 'absolute', left: knobLeft(SCRUB.drag.knobW),
             bottom: (SCRUB.drag.h - SCRUB.drag.knobH) / 2,
             width: SCRUB.drag.knobW, height: SCRUB.drag.knobH, borderRadius: SCRUB.drag.knobW / 2,
             backgroundColor: '#ffffff',

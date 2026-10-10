@@ -186,9 +186,8 @@ function VideoPage({ video, active, onScrubbing }: {
   /* пауза, перемотка, где сейчас ролик */
   const [paused, setPaused] = useState(false);
   const [dragFrac, setDragFrac] = useState<number | null>(null);   // не null — тянут полосу
-  const [now, setNow] = useState(0);
   const [dur, setDur] = useState(video.duration ?? 0);
-  useEventListener(player, 'timeUpdate', ({ currentTime }) => setNow(currentTime));
+  /* время плеера полоса берёт сама каждый кадр (плавно) — здесь его не храним */
   useEventListener(player, 'sourceLoad', ({ duration }) => { if (duration > 0) setDur(duration); });
   const lastSeek = useRef(0);
 
@@ -207,7 +206,6 @@ function VideoPage({ video, active, onScrubbing }: {
   const scrubEnd = (f: number) => {
     /* отпустили — перематываем и сразу играем, даже если стояла пауза */
     try { player.currentTime = f * dur; } catch { /* ещё не готов */ }
-    setNow(f * dur);
     player.play();
     setPaused(false);
     setDragFrac(null);
@@ -442,7 +440,9 @@ function VideoPage({ video, active, onScrubbing }: {
       {/* полоса перемотки и, пока её тянут, кадр с временем над ней */}
       {dragging && <ScrubPreview player={preview} frac={dragFrac!} duration={dur} />}
       <ScrubBar
-        frac={dragging ? dragFrac! : dur > 0 ? now / dur : 0}
+        getTime={() => player.currentTime}
+        duration={dur}
+        active={active}
         mode={dragging ? 'drag' : paused ? 'pause' : 'play'}
         onStart={scrubStart}
         onTouch={onScrubbing}
