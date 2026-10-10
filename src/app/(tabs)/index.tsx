@@ -17,7 +17,6 @@ const TOP = {
   padLeft: 12,     // отступ содержимого полосы слева
   padRight: 17.5,  // от значка поиска до правого края
   gap: 17,         // между словами
-  startX: 34.5,    // на сколько полоса прокручена вправо на старте
   stemGhost: 0.18, // насколько видна «STEM» под значком LIVE
   font: 14.6,
   line: 20,
@@ -113,11 +112,18 @@ export default function HomeFeed() {
         flexDirection: 'row', alignItems: 'flex-start',
       }}>
         <View style={{ flex: 1 }}>
+          {/* полоса обрезается справа от значка LIVE: на узких айфонах
+             слова не залезают под него */}
+          <View style={{ marginLeft: TOP.live.left + TOP.live.w + 4, overflow: 'hidden' }}>
           <ScrollView
             ref={stripRef}
             horizontal
             showsHorizontalScrollIndicator={false}
-            onLayout={() => stripRef.current?.scrollTo({ x: TOP.startX, animated: false })}
+            /* полоса прокручена до конца: «Рекомендации» у лупы на любом айфоне,
+               а всё, что не влезло слева, уходит под значок LIVE
+               (на эталоне 428 точек это ровно прежние 34.5) */
+            onLayout={() => stripRef.current?.scrollToEnd({ animated: false })}
+            onContentSizeChange={() => stripRef.current?.scrollToEnd({ animated: false })}
             contentContainerStyle={{ paddingLeft: TOP.padLeft, paddingRight: 10 }}
           >
             {TABS.map(({ key, label }, i) => (
@@ -145,6 +151,7 @@ export default function HomeFeed() {
               </TouchableOpacity>
             ))}
           </ScrollView>
+          </View>
 
           {/* LIVE слева поверх полосы — открывает прямой эфир */}
           <TouchableOpacity
