@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { AV1, AV2 } from '../../constants/mockAssets';
 import { View, ScrollView, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TouchableOpacity } from '../../components/Touchable';
 import { Text } from '../../components/FixedText';
 import { MessageSquare, Heart, UserPlus, Bell, ChevronRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 export default function InboxScreen() {
+  const insTop = useSafeAreaInsets().top;   // отступ сверху: часы, «чёлка» или «остров»
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'notifications' | 'messages'>('notifications');
 
@@ -102,7 +104,7 @@ export default function InboxScreen() {
   };
 
   return (
-    <View className="flex-1 bg-black pt-14 px-4">
+    <View className="flex-1 bg-black px-4" style={{ paddingTop: insTop + 9 }}>
       {/* Header Tabs */}
       <View className="flex-row justify-center bg-zinc-900/60 p-1 rounded-2xl mb-6 border border-zinc-850">
         <TouchableOpacity

@@ -6,7 +6,7 @@
 // @expo/metro-runtime должен импортироваться первым (как в expo-router/entry)
 import '@expo/metro-runtime';
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View, Dimensions, Platform } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { renderRootComponent } from 'expo-router/build/renderRootComponent';
 
@@ -24,6 +24,22 @@ function report(title, e) {
 
 if (global.ErrorUtils && global.ErrorUtils.setGlobalHandler) {
   global.ErrorUtils.setGlobalHandler((e, isFatal) => report(isFatal ? 'Ошибка (fatal)' : 'Ошибка', e));
+}
+
+/* В браузере можно выбрать айфон (раздел «+» → «Устройство»): тогда
+   приложение рисуется ровно размером его экрана посередине окна.
+   Размер подменяем до загрузки экранов — они читают его при запуске. */
+let webFrame = null;
+if (Platform.OS === 'web') {
+  try {
+    const { findDevice, getDeviceId } = require('./src/lib/device');
+    const d = findDevice(getDeviceId());
+    if (d) {
+      webFrame = { width: d.w, height: d.h };
+      const orig = Dimensions.get.bind(Dimensions);
+      Dimensions.get = (dim) => ({ ...orig(dim), width: d.w, height: d.h });
+    }
+  } catch (e) { /* не вышло — работаем по размеру окна */ }
 }
 
 let RealApp = null;
@@ -61,7 +77,11 @@ function Root() {
     return () => { listener = null; clearTimeout(t); };
   }, []);
   if (msg) return h(CrashScreen, { msg });
-  return RealApp ? h(Boundary, null, h(RealApp)) : h(View, { style: { flex: 1, backgroundColor: '#000' } });
+  const app = RealApp ? h(Boundary, null, h(RealApp)) : h(View, { style: { flex: 1, backgroundColor: '#000' } });
+  if (!webFrame) return app;
+  /* браузер: «экран» выбранного айфона посередине окна */
+  return h(View, { style: { flex: 1, backgroundColor: '#111', alignItems: 'center', justifyContent: 'center' } },
+    h(View, { style: { width: webFrame.width, height: webFrame.height, overflow: 'hidden', backgroundColor: '#000' } }, app));
 }
 
 renderRootComponent(Root);

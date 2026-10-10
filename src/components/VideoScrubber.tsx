@@ -16,7 +16,9 @@ import { VideoView, VideoPlayer } from 'expo-video';
 import { Text } from './FixedText';
 import { roundedTriangle } from '../lib/shapes';
 
-const { width: SCREEN_W } = Dimensions.get('window');
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+/* сняты на экране высотой 926 точек: всё, что над полосой, считаем от низа */
+const REF_H = 926;
 const native = Platform.OS !== 'web';
 
 export const SCRUB = {
@@ -48,7 +50,7 @@ export function PauseIcon({ visible }: { visible: boolean }) {
     <Animated.View
       pointerEvents="none"
       style={{
-        position: 'absolute', left: I.cx - I.w / 2, top: I.cy - I.h / 2, zIndex: 6,
+        position: 'absolute', left: SCREEN_W / 2 + (I.cx - 214) - I.w / 2, top: SCREEN_H / 2 + (I.cy - REF_H / 2) - I.h / 2, zIndex: 6,
         opacity: a,
         transform: [{ scale: a.interpolate({ inputRange: [0, 1], outputRange: [1.35, 1] }) }],
       }}
@@ -66,7 +68,7 @@ export function ScrubPreview({ player, frac, duration }: { player: VideoPlayer; 
   return (
     <>
       <View pointerEvents="none" style={{
-        position: 'absolute', left: (SCREEN_W - P.w) / 2, top: P.top, width: P.w, height: P.h, zIndex: 30,
+        position: 'absolute', left: (SCREEN_W - P.w) / 2, top: SCREEN_H - (REF_H - P.top), width: P.w, height: P.h, zIndex: 30,
         borderRadius: P.radius, borderWidth: 0.8, borderColor: P.border, backgroundColor: '#000000', overflow: 'hidden',
       }}>
         <VideoView
@@ -78,7 +80,7 @@ export function ScrubPreview({ player, frac, duration }: { player: VideoPlayer; 
         />
       </View>
       <View pointerEvents="none" style={{
-        position: 'absolute', left: 0, right: 0, top: T.top, zIndex: 30,
+        position: 'absolute', left: 0, right: 0, top: SCREEN_H - (REF_H - T.top), zIndex: 30,
         flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
       }}>
         <Text style={{ color: T.now, fontSize: T.font, fontWeight: '600', fontVariant: ['tabular-nums'] }}>

@@ -17,6 +17,7 @@ import { roundedTriangle } from '../../lib/shapes';
 import ShareSheet from '../../components/ShareSheet';
 import LikerBubbles from '../../components/LikerBubbles';
 import { goBack } from '../../lib/goBack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrubBar, ScrubPreview, PauseIcon } from '../../components/VideoScrubber';
 
 const { width, height } = Dimensions.get('window');
@@ -156,6 +157,8 @@ function VideoPage({ video, active }: { video: MyVideo; active: boolean }) {
   const router = useRouter();
   const currentUser = useVideoStore((s) => s.currentUser);
   const [shareOpen, setShareOpen] = useState(false);
+  /* верх снят с айфона, где сверху 47 точек; у моделей с «островом» больше */
+  const topShift = useSafeAreaInsets().top - 47;
 
   const player = useVideoPlayer(videoSource(video), (p) => {
     p.loop = true;
@@ -244,7 +247,7 @@ function VideoPage({ video, active }: { video: MyVideo; active: boolean }) {
 
       {/* верх: назад и строка поиска связанного контента */}
       <View style={{
-        position: 'absolute', left: V.back.x, top: V.back.cy - V.back.size / 2, zIndex: 20,
+        position: 'absolute', left: V.back.x, top: topShift + V.back.cy - V.back.size / 2, zIndex: 20,
       }}>
         <TouchableOpacity onPress={() => goBack(router, '/profile')}>
           <ChevronLeft size={V.back.size} color="#ffffff" />
@@ -252,7 +255,7 @@ function VideoPage({ video, active }: { video: MyVideo; active: boolean }) {
       </View>
 
       <View style={{
-        position: 'absolute', left: V.pill.left, right: V.pill.right, top: V.pill.top,
+        position: 'absolute', left: V.pill.left, right: V.pill.right, top: topShift + V.pill.top,
         height: V.pill.h, borderRadius: V.pill.radius,
         borderWidth: 1, borderColor: V.pill.border,
         flexDirection: 'row', alignItems: 'center',

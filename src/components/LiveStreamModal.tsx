@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AV1, AV2 } from '../constants/mockAssets';
 import { View, Image, Modal, ScrollView, Dimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TouchableOpacity } from './Touchable';
 import { Text, TextInput } from './FixedText';
 import { X, Send, Heart, Gift, Users, Eye } from 'lucide-react-native';
@@ -57,6 +58,7 @@ function FloatingGift({ emoji, x, y, onComplete }: { emoji: string; x: number; y
 }
 
 export default function LiveStreamModal({ isVisible, onClose }: LiveStreamModalProps) {
+  const insTop = useSafeAreaInsets().top;   // отступ сверху: часы, «чёлка» или «остров»
   const [comments, setComments] = useState<Array<{ id: string; user: string; text: string }>>([
     { id: '1', user: 'jack_12', text: 'Wow, hello from Paris! 🗼' },
     { id: '2', user: 'lisa_m', text: 'You look amazing today!' },
@@ -195,7 +197,7 @@ export default function LiveStreamModal({ isVisible, onClose }: LiveStreamModalP
         ))}
 
         {/* Top Overlay HUD */}
-        <View className="absolute top-14 left-4 right-4 flex-row justify-between items-center z-10">
+        <View style={{ top: insTop + 9 }} className="absolute left-4 right-4 flex-row justify-between items-center z-10">
           <View className="flex-row items-center bg-black/40 px-3 py-1.5 rounded-full border border-white/10">
             <View className="w-2 h-2 rounded-full bg-[#ff0050] animate-pulse mr-2" />
             <Text className="text-white font-extrabold text-xs mr-2">LIVE</Text>

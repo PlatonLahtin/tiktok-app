@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Image, Dimensions, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TouchableOpacity } from './Touchable';
 import { Text } from './FixedText';
 import { Grid, Lock, Heart, Play, ChevronLeft, Check, Plus } from 'lucide-react-native';
@@ -26,6 +27,7 @@ export default function CreatorProfileOverlay({
   isFollowing,
   onToggleFollow,
 }: CreatorProfileOverlayProps) {
+  const insTop = useSafeAreaInsets().top;   // отступ сверху: часы, «чёлка» или «остров»
   const { videos } = useVideoStore();
   const [activeTab, setActiveTab] = useState<'public' | 'liked'>('public');
 
@@ -106,7 +108,7 @@ export default function CreatorProfileOverlay({
           animatedStyle,
         ]}
       >
-        <ScrollView showsVerticalScrollIndicator={false} className="flex-1 pt-12">
+        <ScrollView showsVerticalScrollIndicator={false} className="flex-1" style={{ paddingTop: insTop + 1 }}>
           {/* Header */}
           <View className="flex-row items-center px-4 mb-5">
             <TouchableOpacity onPress={handleClose} className="bg-zinc-900 p-2.5 rounded-full mr-4">

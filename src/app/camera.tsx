@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Image, Modal, ScrollView, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TouchableOpacity } from '../components/Touchable';
 import { Text } from '../components/FixedText';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -24,6 +25,7 @@ const filterColors = [
 ];
 
 export default function CameraScreen() {
+  const insTop = useSafeAreaInsets().top;   // отступ сверху: часы, «чёлка» или «остров»
   const router = useRouter();
   const params = useLocalSearchParams();
   const { addVideo } = useVideoStore();
@@ -294,7 +296,7 @@ export default function CameraScreen() {
 
       {/* Recording progress bar */}
       {isRecording && (
-        <View className="absolute top-12 left-4 right-4 h-1.5 bg-white/20 rounded-full z-25 overflow-hidden">
+        <View style={{ top: insTop + 1 }} className="absolute left-4 right-4 h-1.5 bg-white/20 rounded-full z-25 overflow-hidden">
           <View className="h-full bg-red-500" style={{ width: `${recordingProgress}%` }} />
         </View>
       )}
@@ -315,7 +317,7 @@ export default function CameraScreen() {
 
       {/* Header HUD overlay */}
       {!isRecording && (
-        <View className="absolute top-14 left-4 right-4 flex-row justify-between items-center z-20">
+        <View style={{ top: insTop + 9 }} className="absolute left-4 right-4 flex-row justify-between items-center z-20">
           <TouchableOpacity
             onPress={() => goBack(router, '/')}
             className="bg-black/50 p-2.5 rounded-full"
@@ -339,7 +341,7 @@ export default function CameraScreen() {
 
       {/* Right HUD Controls */}
       {!isRecording && (
-        <View className="absolute right-4 top-36 gap-y-6 z-20">
+        <View style={{ top: insTop + 97 }} className="absolute right-4 gap-y-6 z-20">
           <TouchableOpacity
             onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
             className="bg-black/50 p-3 rounded-full items-center justify-center border border-zinc-800"

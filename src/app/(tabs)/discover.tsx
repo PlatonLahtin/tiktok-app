@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, ScrollView, Image, Dimensions, FlatList } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TouchableOpacity } from '../../components/Touchable';
 import { Text, TextInput } from '../../components/FixedText';
 import { Search, Flame, Play } from 'lucide-react-native';
@@ -10,6 +11,7 @@ const { width } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (width - 36) / 3; // 3 columns grid with margins
 
 export default function DiscoverScreen() {
+  const insTop = useSafeAreaInsets().top;   // отступ сверху: часы, «чёлка» или «остров»
   const { videos } = useVideoStore();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,7 +31,7 @@ export default function DiscoverScreen() {
   );
 
   return (
-    <View className="flex-1 bg-black px-4 pt-14">
+    <View className="flex-1 bg-black px-4" style={{ paddingTop: insTop + 9 }}>
       {/* Search Input */}
       <View className="flex-row items-center bg-zinc-800 rounded-full px-4 py-2 mb-6">
         <Search size={18} color="#888888" className="mr-2.5" />

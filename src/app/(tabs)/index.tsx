@@ -9,6 +9,7 @@ import { Users, Sparkles, Tv, Search } from 'lucide-react-native';
 import { useIsFocused } from 'expo-router';
 import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import { TAB_BAR_H } from '../../constants/layout';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /* Верхняя полоса ленты. Числа сняты с эталона. */
 const TOP = {
@@ -61,6 +62,8 @@ export default function HomeFeed() {
   const [feedType, setFeedType] = useState<'community' | 'following' | 'foryou'>('foryou');
   const [activeId, setActiveId] = useState<string>('');
   const [showLive, setShowLive] = useState<boolean>(false);
+  /* верх снят с айфона, где сверху 47 точек; у моделей с «островом» больше */
+  const topShift = useSafeAreaInsets().top - 47;
 
   // Лента открыта прямо сейчас? Ушли на другую вкладку или в
   // редактирование профиля — видео встаёт на паузу и звук замолкает.
@@ -106,7 +109,7 @@ export default function HomeFeed() {
       {/* Верхняя панель: полоса вкладок листается влево до «STEM»,
           у левого края она плавно растворяется, а не обрывается. */}
       <View style={{
-        position: 'absolute', top: TOP.y, left: 0, right: 0, zIndex: 20,
+        position: 'absolute', top: topShift + TOP.y, left: 0, right: 0, zIndex: 20,
         flexDirection: 'row', alignItems: 'flex-start',
       }}>
         <View style={{ flex: 1 }}>
