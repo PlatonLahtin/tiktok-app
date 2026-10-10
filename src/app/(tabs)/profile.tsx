@@ -68,14 +68,30 @@ const GLOW = { h: 40, alpha: 0.145 };
 const TAB = {
   side: 16.5, top: 6.6, box: 19.7, off: '#999999', rule: '#303030',
   lineW: 48, lineH: 2, lineGap: 8.35,
+  showLine: false,   // по эталону белой черты под выбранной вкладкой нет
   items: [
     { key: 'public',  src: require('../../../assets/icons/tab-videos.png'),  h: 18.0, ratio: 1.579 },
-    { key: 'shop',    src: require('../../../assets/icons/tab-shop.png'),    h: 19.0, ratio: 1.055 },
     { key: 'private', src: require('../../../assets/icons/tab-private.png'), h: 19.7, ratio: 0.850 },
+    /* «Репосты»: две стрелки по кругу, рисуем сами (картинки нет) */
+    { key: 'reposts', src: null,                                              h: 17.7, ratio: 1.2 },
     { key: 'saved',   src: require('../../../assets/icons/tab-saved.png'),   h: 18.3, ratio: 0.810 },
     { key: 'liked',   src: require('../../../assets/icons/tab-liked.png'),   h: 18.3, ratio: 1.109 },
   ],
 };
+
+/* значок «Репосты» по эталону: слева стрелка вверх, справа — вниз,
+   соединены скруглёнными уголками */
+function RepostIcon({ h, ratio, color }: { h: number; ratio: number; color: string }) {
+  return (
+    <Svg width={h * ratio} height={h} viewBox="0 0 24 20">
+      <Path
+        d="M2.6 5.6 L6.4 1.8 L10.2 5.6 M6.4 1.8 V14.6 Q6.4 18 9.8 18 H13.2
+           M10.8 2 H14.2 Q17.6 2 17.6 5.4 V18.2 M13.8 14.4 L17.6 18.2 L21.4 14.4"
+        fill="none" stroke={color} strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
 
 const { width } = Dimensions.get('window');
 const GRID_ITEM_WIDTH = (width - 2) / 3;   // два зазора по пикселю, полей по краям нет
@@ -84,7 +100,7 @@ export default function ProfileScreen() {
   const { videos, currentUser, updateProfile, isLoggedIn, setShowAuthModal, myVideos } = useVideoStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();   // отступ сверху под «остров» айфона
-  const [activeTab, setActiveTab] = useState<'public' | 'shop' | 'private' | 'saved' | 'liked'>('public');
+  const [activeTab, setActiveTab] = useState<'public' | 'private' | 'reposts' | 'saved' | 'liked'>('public');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
 
@@ -113,7 +129,7 @@ export default function ProfileScreen() {
   const getActiveTabVideos = () => {
     switch (activeTab) {
       case 'public': return publicVideos;
-      case 'shop': return [];
+      case 'reposts': return [];
       case 'private': return privateVideos;
       case 'saved': return [];
       case 'liked': return likedVideos;
@@ -247,16 +263,20 @@ export default function ProfileScreen() {
               className="flex-1 items-center"
             >
               <View style={{ height: TAB.box, justifyContent: 'center' }}>
-                <Image
-                  source={src}
-                  style={{ height: h, width: h * ratio,
-                           tintColor: activeTab === key ? '#ffffff' : TAB.off }}
-                  resizeMode="contain"
-                />
+                {src ? (
+                  <Image
+                    source={src}
+                    style={{ height: h, width: h * ratio,
+                             tintColor: activeTab === key ? '#ffffff' : TAB.off }}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <RepostIcon h={h} ratio={ratio} color={activeTab === key ? '#ffffff' : TAB.off} />
+                )}
               </View>
               <View style={{
                 width: TAB.lineW, height: TAB.lineH, marginTop: TAB.lineGap,
-                backgroundColor: activeTab === key ? '#ffffff' : 'transparent',
+                backgroundColor: TAB.showLine && activeTab === key ? '#ffffff' : 'transparent',
               }} />
             </TouchableOpacity>
           ))}
