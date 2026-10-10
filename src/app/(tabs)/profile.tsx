@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { roundedTriangle } from '../../lib/shapes';
 import { IconPencil, IconAddFriend, IconMenu, AvatarCount } from '../../components/HeaderIcons';
+import { NoteBubble, NotePicker, NOTE_DEFAULT } from '../../components/ProfileNote';
 import { randomAvatar } from '../../lib/avatars';
 
 
@@ -45,7 +46,6 @@ function DefaultThumb({ width, height }: { width: number; height: number }) {
   );
 }
 
-const BUBBLE = require('../../../assets/icons/bubble.png');
 
 const AVA = 96;   // диаметр аватарки в профиле, снят с эталона
 
@@ -53,7 +53,8 @@ const AVA = 96;   // диаметр аватарки в профиле, снят
 const TRI = { w: 10.7, h: 6.7, gap: 6.5, dot: 8, dotLeft: 9.3, dotTop: -9.7 };
 
 /* Облако над аватаркой (точки экрана, с эталона) */
-const BUB = { left: 4, top: -13.7, w: 88.7, ratio: 2.077 };
+/* где стоит правый верхний угол облачка с фразой (относительно аватарки) */
+const BUB = { right: 3.3, top: -13.7 };
 
 /* Просмотры на плитке видео — размеры сняты с эталона */
 const PLAY = { left: 6.7, bottom: 3.5, w: 11.8, h: 13.6, line: 1.3, gap: 6.8, font: 12.9, round: 1.8 };
@@ -103,6 +104,7 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<'public' | 'private' | 'reposts' | 'saved' | 'liked'>('public');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAccounts, setShowAccounts] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
 
   /* «Недавно смотрели профиль»: лицо берём наугад и меняем
      каждый раз, когда возвращаемся на эту вкладку. */
@@ -225,13 +227,12 @@ export default function ProfileScreen() {
           <View style={{ width: AVA, height: AVA, marginTop: 6 }}>
             <Image source={{ uri: currentUser.avatar }} style={{ width: AVA, height: AVA, borderRadius: AVA / 2 }} />
 
-            {/* Облако с подписью — готовая картинка вместе с хвостиком.
-                Оно вылезает над аватаркой, поэтому отступ сверху отрицательный. */}
-            <Image
-              source={BUBBLE}
-              style={{ position: 'absolute', left: BUB.left, top: BUB.top,
-                       width: BUB.w, height: BUB.w / BUB.ratio }}
-              resizeMode="contain"
+            {/* Облачко с фразой: вылезает над аватаркой, поэтому отступ сверху
+                отрицательный. Нажатие — выбрать другую фразу или написать свою. */}
+            <NoteBubble
+              text={currentUser.note?.trim() || NOTE_DEFAULT}
+              right={BUB.right} top={BUB.top}
+              onPress={() => setShowNotes(true)}
             />
             {/* голубой кружок: сам он 24 точки, вокруг чёрное кольцо 3.7 —
                 кольцо вылезает за край аватарки, поэтому отступы отрицательные */}
@@ -338,6 +339,14 @@ export default function ProfileScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* выбор фразы для облачка над аватаркой */}
+      <NotePicker
+        visible={showNotes}
+        current={currentUser.note?.trim() || NOTE_DEFAULT}
+        onPick={(t) => { updateProfile({ note: t }); setShowNotes(false); }}
+        onClose={() => setShowNotes(false)}
+      />
 
       <AccountSheet visible={showAccounts} onClose={() => setShowAccounts(false)} />
 

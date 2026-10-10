@@ -244,6 +244,7 @@ export interface UserProfile {
   username: string;
   bio: string;
   avatar: string;
+  note?: string;        // фраза в облачке над аватаркой; пусто — «Кофе или чай?»
   /* Счётчики профиля. Храним строкой: что вбили — то и показываем. */
   following: string;
   followers: string;
