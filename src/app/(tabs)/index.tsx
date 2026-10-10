@@ -33,15 +33,17 @@ const GAPS: Record<string, number> = { community: 17, following: 16.7, foryou: 1
 /* Значок LIVE: верх и низ рамки телевизора, по бокам между ними —
    надпись LIVE, сверху антенна «уголком» */
 function LiveIcon() {
+  /* по эталону: рамка — только верх и низ с короткими загибами по бокам,
+     крупная надпись LIVE почти во всю ширину, линии тоньше */
   return (
-    <Svg width={TOP.live.w} height={TOP.live.h} viewBox="0 0 70 72">
+    <Svg width={TOP.live.w} height={TOP.live.w * 76 / 70} viewBox="0 0 70 76">
       <Path
-        d="M24 3 L35 14 L46 3 M3 27 V22 Q3 16 9 16 H61 Q67 16 67 22 V27 M3 52 V61 Q3 67 9 67 H61 Q67 67 67 61 V52"
-        fill="none" stroke="#ffffff" strokeWidth={5.5} strokeLinecap="round" strokeLinejoin="round"
+        d="M23.5 4 L35 14.5 L46.5 4 M3 27 V21 Q3 16 8 16 H62 Q67 16 67 21 V27 M3 63 V69 Q3 74 8 74 H62 Q67 74 67 69 V63"
+        fill="none" stroke="#ffffff" strokeWidth={4.6} strokeLinecap="round" strokeLinejoin="round"
       />
       <SvgText
-        x="35" y="51.5" textAnchor="middle" fill="#ffffff"
-        fontSize="31" fontWeight="900" textLength="60" lengthAdjust="spacingAndGlyphs"
+        x="35" y="57.5" textAnchor="middle" fill="#ffffff"
+        fontSize="34" fontWeight="800" textLength="68" lengthAdjust="spacingAndGlyphs"
       >
         LIVE
       </SvgText>

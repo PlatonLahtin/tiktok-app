@@ -74,7 +74,7 @@ const TAB = {
     { key: 'public',  src: require('../../../assets/icons/tab-videos.png'),  h: 18.0, ratio: 1.579 },
     { key: 'private', src: require('../../../assets/icons/tab-private.png'), h: 19.7, ratio: 0.850 },
     /* «Репосты»: две стрелки по кругу, рисуем сами (картинки нет) */
-    { key: 'reposts', src: null,                                              h: 19.7, ratio: 1.2 },   // размер по эталону
+    { key: 'reposts', src: null,                                              h: 19.7, ratio: 1.3 },   // размер по эталону
     { key: 'saved',   src: require('../../../assets/icons/tab-saved.png'),   h: 18.3, ratio: 0.810 },
     { key: 'liked',   src: require('../../../assets/icons/tab-liked.png'),   h: 18.3, ratio: 1.109 },
   ],
@@ -84,10 +84,11 @@ const TAB = {
    соединены скруглёнными уголками */
 function RepostIcon({ h, ratio, color }: { h: number; ratio: number; color: string }) {
   return (
-    <Svg width={h * ratio} height={h} viewBox="0 0 24 20">
+    <Svg width={h * ratio} height={h} viewBox="0 0 26 20">
+      {/* по эталону значок шире: стрелки дальше друг от друга, перемычки длиннее */}
       <Path
-        d="M2.6 5.6 L6.4 1.8 L10.2 5.6 M6.4 1.8 V14.6 Q6.4 18 9.8 18 H13.2
-           M10.8 2 H14.2 Q17.6 2 17.6 5.4 V18.2 M13.8 14.4 L17.6 18.2 L21.4 14.4"
+        d="M2.6 5.6 L6.4 1.8 L10.2 5.6 M6.4 1.8 V14.6 Q6.4 18 9.8 18 H15
+           M11.8 2 H16.2 Q19.6 2 19.6 5.4 V18.2 M15.8 14.4 L19.6 18.2 L23.4 14.4"
         fill="none" stroke={color} strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round"
       />
     </Svg>
