@@ -197,7 +197,7 @@ function VideoPage({ video, active, onScrubbing }: {
   };
   const previewAt = (f: number, force = false) => {
     const t = Date.now();
-    if (!force && t - lastSeek.current < 60) return;   // не чаще ~15 раз в секунду
+    if (!force && t - lastSeek.current < 33) return;   // не чаще ~30 раз в секунду
     lastSeek.current = t;
     try { preview.currentTime = f * dur; } catch { /* плеер ещё не готов */ }
   };

@@ -117,14 +117,26 @@ export function ScrubBar({ getTime, duration, active = true, mode, onStart, onMo
   durRef.current = duration;
   const timeRef = useRef(getTime);
   timeRef.current = getTime;
+  const pausedRef = useRef(mode === 'pause');
+  pausedRef.current = mode === 'pause';
   useEffect(() => {
     if (!active) return;
     let raf = 0;
-    const tick = () => {
+    /* Плеер отдаёт время ступеньками (одно и то же значение несколько кадров
+       подряд). Между ступеньками достраиваем время сами по часам кадра —
+       полоса едет без подёргиваний. */
+    let lastT = -1, lastAt = 0, shown = 0;
+    const tick = (now: number) => {
       if (!draggingRef.current && durRef.current > 0) {
         let t = 0;
         try { t = timeRef.current() || 0; } catch { /* плеер отпущен */ }
-        pos.setValue(Math.min(1, Math.max(0, t / durRef.current)));
+        if (t !== lastT) { lastT = t; lastAt = now; }
+        const moving = Math.abs(t - shown) < 0.5;          // не перемотка и не начало заново
+        const est = moving ? t + Math.min(0.25, (now - lastAt) / 1000) : t;
+        /* не даём полосе ехать назад на долю секунды из-за догоняющего времени плеера */
+        shown = moving && est < shown && shown - est < 0.3 ? shown : est;
+        if (!pausedRef.current || !moving) pos.setValue(Math.min(1, Math.max(0, shown / durRef.current)));
+        else { shown = t; pos.setValue(Math.min(1, Math.max(0, t / durRef.current))); }
       }
       raf = requestAnimationFrame(tick);
     };
@@ -152,7 +164,7 @@ export function ScrubBar({ getTime, duration, active = true, mode, onStart, onMo
       const f = toFrac(e.nativeEvent.pageX);
       pos.setValue(f);                         // полоса — сразу, каждый кадр
       const now = Date.now();
-      if (now - lastMove.current > 50) {       // кадр и время над полосой — ~20 раз в секунду
+      if (now - lastMove.current > 30) {       // кадр и время над полосой — ~30 раз в секунду
         lastMove.current = now;
         handlers.current.onMove(f);
       }
