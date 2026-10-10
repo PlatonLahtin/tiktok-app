@@ -3,19 +3,21 @@
    три точки, снизу полоса с просмотрами и кнопкой.
    Все числа сняты с эталона, в точках экрана. */
 
-import React, { useCallback, useState } from 'react';
-import { View, Image, StatusBar, Dimensions } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { View, Image, StatusBar, Dimensions, Pressable, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../../components/Touchable';
 import { Text } from '../../components/FixedText';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { ChevronLeft, Search } from 'lucide-react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { useEventListener } from 'expo';
 import Svg, { Path } from 'react-native-svg';
 import { useVideoStore, videoSource, shownCount } from '../../store/useVideoStore';
 import { roundedTriangle } from '../../lib/shapes';
 import ShareSheet from '../../components/ShareSheet';
 import LikerBubbles from '../../components/LikerBubbles';
 import { goBack } from '../../lib/goBack';
+import { ScrubBar, ScrubPreview, PauseIcon } from '../../components/VideoScrubber';
 
 const { width, height } = Dimensions.get('window');
 
@@ -80,14 +82,53 @@ export default function ProfileVideoScreen() {
   const player = useVideoPlayer(videoSource(video ?? { uri: null }), (p) => {
     p.loop = true;
     p.muted = false;
+    p.timeUpdateEventInterval = 0.1;
     p.play();
   });
+
+  /* второй, беззвучный плеер — только для кадра над полосой при перемотке */
+  const preview = useVideoPlayer(videoSource(video ?? { uri: null }), (p) => {
+    p.muted = true;
+    p.loop = false;
+  });
+
+  /* пауза, перемотка, где сейчас ролик */
+  const [paused, setPaused] = useState(false);
+  const [dragFrac, setDragFrac] = useState<number | null>(null);   // не null — тянут полосу
+  const [now, setNow] = useState(0);
+  const [dur, setDur] = useState(video?.duration ?? 0);
+  useEventListener(player, 'timeUpdate', ({ currentTime }) => setNow(currentTime));
+  useEventListener(player, 'sourceLoad', ({ duration }) => { if (duration > 0) setDur(duration); });
+  const lastSeek = useRef(0);
+
+  const togglePause = () => {
+    if (paused) { player.play(); setPaused(false); }
+    else { player.pause(); setPaused(true); }
+  };
+  const previewAt = (f: number, force = false) => {
+    const t = Date.now();
+    if (!force && t - lastSeek.current < 60) return;   // не чаще ~15 раз в секунду
+    lastSeek.current = t;
+    try { preview.currentTime = f * dur; } catch { /* плеер ещё не готов */ }
+  };
+  const scrubStart = (f: number) => { setDragFrac(f); previewAt(f, true); };
+  const scrubMove = (f: number) => { setDragFrac(f); previewAt(f); };
+  const scrubEnd = (f: number) => {
+    /* отпустили — перематываем и сразу играем, даже если стояла пауза */
+    try { player.currentTime = f * dur; } catch { /* ещё не готов */ }
+    setNow(f * dur);
+    player.play();
+    setPaused(false);
+    setDragFrac(null);
+  };
+  const dragging = dragFrac !== null;
 
   /* ушли на другой экран (статистика лежит поверх этого) — на паузу,
      вернулись — играем дальше; иначе звук идёт из-под статистики */
   useFocusEffect(
     useCallback(() => {
       player.play();
+      setPaused(false);
       return () => {
         try { player.pause(); } catch { /* экран закрыли — плеер уже отпущен */ }
       };
@@ -119,6 +160,10 @@ export default function ProfileVideoScreen() {
         allowsVideoFrameAnalysis={false}
       />
 
+      {/* тап по видео — пауза / дальше; кнопки и подписи лежат выше и ловят свои нажатия */}
+      <Pressable onPress={togglePause} style={[StyleSheet.absoluteFill, { zIndex: 5 }]} />
+      <PauseIcon visible={paused && !dragging} />
+
       {/* верх: назад и строка поиска связанного контента */}
       <View style={{
         position: 'absolute', left: V.back.x, top: V.back.cy - V.back.size / 2, zIndex: 20,
@@ -149,7 +194,7 @@ export default function ProfileVideoScreen() {
       {/* правая колонка */}
       <View
         pointerEvents="box-none"
-        style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: V.colW, zIndex: 10 }}
+        style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: V.colW, zIndex: 10, opacity: dragging ? 0 : 1 }}
       >
         {/* своё видео — кнопки «подписаться» под аватаркой нет */}
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: V.avaBottom, alignItems: 'center' }}>
@@ -206,13 +251,16 @@ export default function ProfileVideoScreen() {
 
       {/* аватарки тех, кто лайкнул — идут снизу вверх */}
       {/* нет лайков — некому и всплывать */}
-      {!/^\s*0?\s*$/.test(shownCount(video, 'screenLikes')) && <LikerBubbles />}
+      {/* пока тянут полосу — всё лишнее прячется (как в приложении) */}
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 10, opacity: dragging ? 0 : 1 }]}>
+        {!/^\s*0?\s*$/.test(shownCount(video, 'screenLikes')) && <LikerBubbles />}
+      </View>
 
       {/* ник и описание */}
       {/* Ник и описание в одной колонке, прижатой к низу: если описание
           занимает две строки, ник сам поднимается выше и не перекрывается.
           При одной строке всё стоит ровно там же, где и раньше. */}
-      <View style={{ position: 'absolute', left: V.textLeft, bottom: V.descBottom, width: V.textWidth, zIndex: 10 }}>
+      <View style={{ position: 'absolute', left: V.textLeft, bottom: V.descBottom, width: V.textWidth, zIndex: 10, opacity: dragging ? 0 : 1 }}>
         <View style={{ flexDirection: 'row' }}>
           {/* над описанием — ник (имя профиля), а не @имя пользователя */}
           <Text numberOfLines={1} style={{ flexShrink: 1, color: '#ffffff', fontSize: V.nameFont, fontWeight: '700', lineHeight: V.nameLine }}>
@@ -284,6 +332,16 @@ export default function ProfileVideoScreen() {
           {V.btn.text}
         </Text>
       </TouchableOpacity>
+
+      {/* полоса перемотки и, пока её тянут, кадр с временем над ней */}
+      {dragging && <ScrubPreview player={preview} frac={dragFrac!} duration={dur} />}
+      <ScrubBar
+        frac={dragging ? dragFrac! : dur > 0 ? now / dur : 0}
+        mode={dragging ? 'drag' : paused ? 'pause' : 'play'}
+        onStart={scrubStart}
+        onMove={scrubMove}
+        onEnd={scrubEnd}
+      />
 
       <ShareSheet
         visible={shareOpen}
