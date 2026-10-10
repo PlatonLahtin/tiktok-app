@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /* Верхняя полоса ленты. Числа сняты с эталона. */
 const TOP = {
-  y: 70.2,         // от верха экрана до текста вкладок
+  y: 59.5,         // от верха экрана до текста вкладок (по эталону полоса выше, чем было)
   padLeft: 12,     // отступ содержимого полосы слева
   padRight: 17.5,  // от значка поиска до правого края
   gap: 17,         // между словами
@@ -41,7 +41,7 @@ function LiveIcon() {
       />
       <SvgText
         x="35" y="51.5" textAnchor="middle" fill="#ffffff"
-        fontSize="31" fontWeight="900" textLength="66" lengthAdjust="spacingAndGlyphs"
+        fontSize="31" fontWeight="900" textLength="60" lengthAdjust="spacingAndGlyphs"
       >
         LIVE
       </SvgText>

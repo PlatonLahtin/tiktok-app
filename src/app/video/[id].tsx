@@ -91,9 +91,17 @@ export default function ProfileVideoScreen() {
      курсором, отпустил — встаёт на следующее/предыдущее видео.
      На телефоне работает обычная прокрутка списка. */
   const dragBase = useRef<number | null>(null);   // с какого видео начали тянуть
+  /* пока тянут полосу перемотки — список не листается и ничего не перехватывает */
+  const [scrubbing, setScrubbing] = useState(false);
+  const scrubbingRef = useRef(false);
+  const onScrubbing = useCallback((b: boolean) => {
+    if (scrubbingRef.current === b) return;
+    scrubbingRef.current = b;
+    setScrubbing(b);
+  }, []);
   const swipe = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponderCapture: (_, g) =>
-      Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.2,
+      !scrubbingRef.current && Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.2,
     onPanResponderGrant: () => { dragBase.current = activeRef.current; },
     onPanResponderMove: (_, g) => {
       const base = dragBase.current ?? activeRef.current;
@@ -129,7 +137,8 @@ export default function ProfileVideoScreen() {
         ref={listRef}
         data={myVideos}
         keyExtractor={(v) => v.id}
-        renderItem={({ item, index }) => <VideoPage video={item} active={index === active} />}
+        renderItem={({ item, index }) => <VideoPage video={item} active={index === active} onScrubbing={onScrubbing} />}
+        scrollEnabled={!scrubbing}
         pagingEnabled
         snapToInterval={height}
         decelerationRate="fast"
@@ -153,7 +162,9 @@ export default function ProfileVideoScreen() {
 }
 
 /* Одно видео на весь экран. Играет только то, что сейчас на экране */
-function VideoPage({ video, active }: { video: MyVideo; active: boolean }) {
+function VideoPage({ video, active, onScrubbing }: {
+  video: MyVideo; active: boolean; onScrubbing: (b: boolean) => void;
+}) {
   const router = useRouter();
   const currentUser = useVideoStore((s) => s.currentUser);
   const [shareOpen, setShareOpen] = useState(false);
@@ -191,7 +202,7 @@ function VideoPage({ video, active }: { video: MyVideo; active: boolean }) {
     lastSeek.current = t;
     try { preview.currentTime = f * dur; } catch { /* плеер ещё не готов */ }
   };
-  const scrubStart = (f: number) => { setDragFrac(f); previewAt(f, true); };
+  const scrubStart = (f: number) => { onScrubbing(true); setDragFrac(f); previewAt(f, true); };
   const scrubMove = (f: number) => { setDragFrac(f); previewAt(f); };
   const scrubEnd = (f: number) => {
     /* отпустили — перематываем и сразу играем, даже если стояла пауза */
@@ -200,8 +211,21 @@ function VideoPage({ video, active }: { video: MyVideo; active: boolean }) {
     player.play();
     setPaused(false);
     setDragFrac(null);
+    onScrubbing(false);
   };
   const dragging = dragFrac !== null;
+  const draggingRef = useRef(false);
+  draggingRef.current = dragging;
+
+  /* Свайп вправо — назад в профиль (свой жест вместо системного: системный
+     срабатывал от левого края и мешал тянуть полосу перемотки) */
+  const backSwipe = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponderCapture: (_, g) =>
+      !draggingRef.current && g.dx > 14 && g.dx > Math.abs(g.dy) * 1.6,
+    onPanResponderRelease: (_, g) => { if (g.dx > 70 || g.vx > 0.6) goBack(router, '/profile'); },
+    onPanResponderTerminationRequest: () => true,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
 
   /* долистали до этого видео — играет с начала; ушли с него — стоп */
   const activeRef = useRef(active);
@@ -232,7 +256,8 @@ function VideoPage({ video, active }: { video: MyVideo; active: boolean }) {
   const T = V.views.tri;
 
   return (
-    <View style={{ width, height, backgroundColor: '#000000' }}>
+    /* в браузере при перетаскивании мышью не выделяем текст синим */
+    <View style={[{ width, height, backgroundColor: '#000000' }, Platform.OS === 'web' ? ({ userSelect: 'none' } as any) : null]} {...backSwipe.panHandlers}>
       <VideoView
         player={player}
         style={{ position: 'absolute', left: 0, top: 0, width, height }}
@@ -420,6 +445,7 @@ function VideoPage({ video, active }: { video: MyVideo; active: boolean }) {
         frac={dragging ? dragFrac! : dur > 0 ? now / dur : 0}
         mode={dragging ? 'drag' : paused ? 'pause' : 'play'}
         onStart={scrubStart}
+        onTouch={onScrubbing}
         onMove={scrubMove}
         onEnd={scrubEnd}
       />

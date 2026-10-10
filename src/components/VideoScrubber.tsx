@@ -96,9 +96,11 @@ export function ScrubPreview({ player, frac, duration }: { player: VideoPlayer; 
 }
 
 /* сама полоса. frac — где сейчас (0…1). mode: идёт / пауза / тянут */
-export function ScrubBar({ frac, mode, onStart, onMove, onEnd }: {
+export function ScrubBar({ frac, mode, onStart, onMove, onEnd, onTouch }: {
   frac: number; mode: 'play' | 'pause' | 'drag';
   onStart: (f: number) => void; onMove: (f: number) => void; onEnd: (f: number) => void;
+  /* палец на полосе / убран — чтобы экран сразу перестал листаться */
+  onTouch?: (down: boolean) => void;
 }) {
   const barW = SCREEN_W - SCRUB.left - SCRUB.right;
   const offset = useRef(0);   // где полоса на странице (pageX её левого края)
@@ -128,6 +130,9 @@ export function ScrubBar({ frac, mode, onStart, onMove, onEnd }: {
   return (
     <View
       {...pan.panHandlers}
+      onTouchStart={() => onTouch?.(true)}
+      onTouchEnd={() => onTouch?.(false)}
+      onTouchCancel={() => onTouch?.(false)}
       style={{
         position: 'absolute', left: SCRUB.left, width: barW, bottom: SCRUB.bottom - SCRUB.hitBelow,
         height: SCRUB.hit, paddingBottom: SCRUB.hitBelow, justifyContent: 'flex-end', zIndex: 40,

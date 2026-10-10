@@ -35,7 +35,7 @@ const N = {
   h: 30.2,          // высота облачка
   radius: 11.9,
   padX: 8.9,
-  maxW: 190,
+  maxW: 300,        // длинная фраза целиком (как в приложении), облачко растёт влево
   tail: { fromRight: 29.5, w: 12.6, h: 5.8 },     // «язычок» под облачком
   dot: { fromRight: 27.5, below: 9.7, r: 2.7 },   // точка под язычком
 };
@@ -44,11 +44,15 @@ const N = {
 export function NoteBubble({ text, right, top, onPress }: {
   text: string; right: number; top: number; onPress?: () => void;
 }) {
+  /* Внешний слой — широкая прозрачная рамка: без неё облачко сжималось
+     до ширины аватарки и фраза обрезалась троеточием. Нажатия она
+     не ловит (box-none), ловит только само облачко. */
   return (
+    <View pointerEvents="box-none" style={{ position: 'absolute', right, top, width: N.maxW, alignItems: 'flex-end' }}>
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={onPress}
-      style={{ position: 'absolute', right, top, alignItems: 'flex-end' }}
+      style={{ alignItems: 'flex-end' }}
     >
       <View style={{
         height: N.h, borderRadius: N.radius, backgroundColor: N.bg,
@@ -76,6 +80,7 @@ export function NoteBubble({ text, right, top, onPress }: {
         width: N.dot.r * 2, height: N.dot.r * 2, borderRadius: N.dot.r, backgroundColor: N.bg,
       }} />
     </TouchableOpacity>
+    </View>
   );
 }
 

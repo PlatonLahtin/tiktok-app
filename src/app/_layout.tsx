@@ -45,6 +45,9 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="camera" options={{ presentation: 'modal' }} />
           <Stack.Screen name="edit-profile" />
+          {/* системный свайп «назад» от левого края мешал тянуть полосу
+             перемотки — на экране видео свой свайп вправо */}
+          <Stack.Screen name="video/[id]" options={{ gestureEnabled: false }} />
           {/* статистика въезжает справа и очень быстро */}
           <Stack.Screen
             name="stats/[id]"

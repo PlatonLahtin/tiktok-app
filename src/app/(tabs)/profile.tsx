@@ -74,7 +74,7 @@ const TAB = {
     { key: 'public',  src: require('../../../assets/icons/tab-videos.png'),  h: 18.0, ratio: 1.579 },
     { key: 'private', src: require('../../../assets/icons/tab-private.png'), h: 19.7, ratio: 0.850 },
     /* «Репосты»: две стрелки по кругу, рисуем сами (картинки нет) */
-    { key: 'reposts', src: null,                                              h: 17.7, ratio: 1.2 },
+    { key: 'reposts', src: null,                                              h: 19.7, ratio: 1.2 },   // размер по эталону
     { key: 'saved',   src: require('../../../assets/icons/tab-saved.png'),   h: 18.3, ratio: 0.810 },
     { key: 'liked',   src: require('../../../assets/icons/tab-liked.png'),   h: 18.3, ratio: 1.109 },
   ],
