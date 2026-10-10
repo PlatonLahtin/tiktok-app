@@ -41,7 +41,13 @@ function waitReady(player: ReturnType<typeof createVideoPlayer>, ms: number) {
 async function grabFrame(source: any): Promise<VideoThumbnail | null> {
   /* в браузере expo-video кадры не вынимает — берём кадр через <video> и canvas */
   if (Platform.OS === 'web') {
-    const src = typeof source === 'number' ? Asset.fromModule(source).uri : source?.uri;
+    /* встроенный ролик в браузере бывает номером, строкой или объектом — достаём адрес из любого */
+    let src: string | undefined;
+    try {
+      src = typeof source === 'string' ? source
+        : typeof source === 'number' ? Asset.fromModule(source).uri
+        : source?.uri ?? (source?.default ? Asset.fromModule(source.default).uri : undefined);
+    } catch { src = undefined; }
     return src ? ((await webVideoFrame(src)) as unknown as VideoThumbnail | null) : null;
   }
   const player = createVideoPlayer(source);
@@ -58,7 +64,7 @@ async function grabFrame(source: any): Promise<VideoThumbnail | null> {
 }
 
 export function useVideoThumb(source: any): VideoThumbnail | null {
-  const key = typeof source === 'number' ? `asset:${source}` : String(source?.uri ?? '');
+  const key = typeof source === 'number' ? `asset:${source}` : typeof source === 'string' ? source : String(source?.uri ?? JSON.stringify(source ?? ''));
   const [thumb, setThumb] = useState<VideoThumbnail | null>(null);
 
   useEffect(() => {

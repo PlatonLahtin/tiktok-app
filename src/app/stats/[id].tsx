@@ -5,7 +5,7 @@
    Отсчёт идёт от безопасной зоны сверху (у эталона она 59). */
 
 import React, { createContext, useContext, useRef, useState } from 'react';
-import { View, Image, Pressable, StatusBar, Dimensions } from 'react-native';
+import { View, Image, Pressable, StatusBar, Dimensions, Platform } from 'react-native';
 import { TouchableOpacity } from '../../components/Touchable';
 import { Text } from '../../components/FixedText';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -1539,6 +1539,8 @@ export function StatsScreen({ videoId, editable = false }: { videoId?: string; e
         showsHorizontalScrollIndicator={false}
         directionalLockEnabled
         contentOffset={{ x: START_TAB * SCREEN_W, y: 0 }}
+        /* в браузере contentOffset не работает — встаём на «Обзор» сами */
+        onLayout={Platform.OS === 'web' ? () => (pager.current as any)?.scrollTo?.({ x: START_TAB * SCREEN_W, y: 0, animated: false }) : undefined}
         style={{ marginTop: headH }}
       >
         <Page index={0} aref={r0} current={current} headerY={headerY} ys={ys} topPad={blockH} minH={pageMinH} />
