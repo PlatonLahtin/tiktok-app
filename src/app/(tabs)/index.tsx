@@ -7,7 +7,7 @@ import VideoPost from '../../components/VideoPost';
 import LiveStreamModal from '../../components/LiveStreamModal';
 import { Users, Sparkles, Tv, Search } from 'lucide-react-native';
 import { useIsFocused } from 'expo-router';
-import Svg, { Defs, LinearGradient, Rect, Stop, Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import { TAB_BAR_H } from '../../constants/layout';
 
 /* Верхняя полоса ленты. Числа сняты с эталона. */
@@ -17,7 +17,7 @@ const TOP = {
   padRight: 17.5,  // от значка поиска до правого края
   gap: 17,         // между словами
   startX: 34.5,    // на сколько полоса прокручена вправо на старте
-  fade: 64,        // растворение у левого края: под значком LIVE текст почти не виден
+  stemGhost: 0.18, // насколько видна «STEM» под значком LIVE
   font: 14.6,
   line: 20,
   off: '#bfbfbf',  // цвет неактивных вкладок
@@ -124,6 +124,10 @@ export default function HomeFeed() {
                 style={{ marginLeft: i === 0 ? 0 : GAPS[key] ?? TOP.gap, alignItems: 'center' }}
               >
                 <Text style={{
+                  /* «STEM» под значком LIVE — лишь едва заметная тень, как на эталоне.
+                     Раньше это делал чёрный градиент поверх полосы, но в браузере
+                     он выглядел чёрным пятном на фоне видео */
+                  opacity: key === 'stem' ? TOP.stemGhost : 1,
                   color: feedType === key ? '#ffffff' : TOP.off,
                   fontSize: TOP.font,
                   fontWeight: feedType === key ? '700' : '600',
@@ -139,22 +143,7 @@ export default function HomeFeed() {
             ))}
           </ScrollView>
 
-          {/* растворение у левого края */}
-          <Svg
-            pointerEvents="none"
-            style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: TOP.fade }}
-          >
-            <Defs>
-              <LinearGradient id="fadeLeft" x1="0" y1="0" x2="1" y2="0">
-                <Stop offset="0" stopColor="#000000" stopOpacity="1" />
-                <Stop offset="0.66" stopColor="#000000" stopOpacity="0.97" />
-                <Stop offset="1" stopColor="#000000" stopOpacity="0" />
-              </LinearGradient>
-            </Defs>
-            <Rect x="0" y="0" width="100%" height="100%" fill="url(#fadeLeft)" />
-          </Svg>
-
-          {/* LIVE поверх растворения — открывает прямой эфир */}
+          {/* LIVE слева поверх полосы — открывает прямой эфир */}
           <TouchableOpacity
             onPress={() => setShowLive(true)}
             hitSlop={8}
