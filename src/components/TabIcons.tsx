@@ -39,6 +39,9 @@ export const IconProfile = make('profile');
    Надпись берётся из «Настройки визуала». «99+» — ровно по эталону (ширина 35);
    короткая — кружок, длинная — плашка растёт вправо, левый край на месте. */
 const BADGE = { text: '99+', fontSize: 11.5, width: 35, height: 15, radius: 8, top: -7, right: -15.7, padX: 4.5 };
+/* короткое число («52»), снято с эталона: плашка чуть выше и прижата
+   правым краем почти туда же, где кончается «99+» */
+const BADGE_SHORT = { height: 16, top: -6.5, right: -14 };
 
 export function IconInbox({ active = false }: P) {
   const it = ICON.inbox;
@@ -56,20 +59,28 @@ export function IconInbox({ active = false }: P) {
       {!!text && (
         <View
           pointerEvents="none"
-          style={{
+          style={text === BADGE.text ? {
             position: 'absolute',
             top: BADGE.top,
             left: iconW + BADGE.right * -1 - BADGE.width,
             width: 120,
             flexDirection: 'row',
+          } : {
+            /* остальные — по правому краю: длиннее число, дальше влево */
+            position: 'absolute',
+            top: BADGE_SHORT.top,
+            right: BADGE_SHORT.right,
+            width: 120,
+            flexDirection: 'row',
+            justifyContent: 'flex-end',
           }}
         >
           <View
             style={{
-              height: BADGE.height,
+              height: text === BADGE.text ? BADGE.height : BADGE_SHORT.height,
               ...(text === BADGE.text
                 ? { width: BADGE.width }
-                : { minWidth: BADGE.height, paddingHorizontal: BADGE.padX }),
+                : { minWidth: BADGE_SHORT.height, paddingHorizontal: BADGE.padX }),
               borderRadius: BADGE.radius,
               backgroundColor: '#fe2c55',
               alignItems: 'center',
@@ -81,7 +92,7 @@ export function IconInbox({ active = false }: P) {
               style={{
                 color: '#ffffff',
                 fontSize: BADGE.fontSize,
-                fontWeight: '800',
+                fontWeight: '600',   // по эталону цифры полужирные, не очень жирные
                 includeFontPadding: false,
                 textAlign: 'center',
               }}
