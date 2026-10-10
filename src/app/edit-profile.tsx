@@ -14,11 +14,13 @@ import { ChevronLeft, ChevronRight, Copy } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useVideoStore, keepImageFile } from '../store/useVideoStore';
 import { goBack } from '../lib/goBack';
 
 const CAMERA = require('../../assets/icons/camera.png');
-const MENU = require('../../assets/icons/menu.png');
+/* две картинки на плашке «Создайте свой аватар» — свои, из папки likers */
+const BANNER_PICS = [require('../../assets/likers/a03.jpg'), require('../../assets/likers/a07.jpg')];
 
 const UI = {
   side: 11.9,        // от края экрана до карточки
@@ -41,14 +43,14 @@ const UI = {
   avatar: 111.6,
   cam: { h: 31.9, ratio: 1.179 },
   dim: 0.39,         // затемнение аватарки
-  /* нижний блок «TikTok Studio»: строка чуть выше обычной,
-     значок полосок отодвинут от края дальше, чем стрелка */
-  studioH: 52.1,
-  studioIcon: 9.5,
-  studioIconRatio: 1.332,
-  studioIconPad: 22.1,
-  studioIconColor: '#a5a5a5',
   blue: '#20d5ec',
+  /* плашка «Создайте свой аватар» над аватаркой (с эталона) */
+  banner: {
+    side: 15.7, h: 45.8, radius: 10, top: 2,
+    textLeft: 112, font: 15.5, pic: 34, gap: 12.2,
+    from: '#3fb6cf', to: '#7fe0d6',
+  },
+  singleRowH: 52,    // одиночная строка в последней карточке чуть выше обычной
 };
 
 type Field = 'name' | 'username' | 'bio';
@@ -183,8 +185,39 @@ export default function EditProfileScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 21.3 }}>
+        {/* плашка «Создайте свой аватар»: градиент, две картинки слева, стрелка справа */}
+        <TouchableOpacity activeOpacity={0.85} style={{
+          marginHorizontal: UI.banner.side, marginTop: UI.banner.top, height: UI.banner.h,
+          borderRadius: UI.banner.radius, overflow: 'hidden',
+          flexDirection: 'row', alignItems: 'center',
+        }}>
+          <Svg style={{ position: 'absolute', left: 0, top: 0 }} width="100%" height="100%">
+            <Defs>
+              <LinearGradient id="avatarBanner" x1="0" y1="0" x2="1" y2="0">
+                <Stop offset="0" stopColor={UI.banner.from} />
+                <Stop offset="1" stopColor={UI.banner.to} />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill="url(#avatarBanner)" />
+          </Svg>
+          <View style={{ width: UI.banner.textLeft, flexDirection: 'row', alignItems: 'center', paddingLeft: 14 }}>
+            {BANNER_PICS.map((src, i) => (
+              <Image key={i} source={src} style={{
+                width: UI.banner.pic, height: UI.banner.pic, borderRadius: UI.banner.pic / 2,
+                marginLeft: i ? -6 : 0, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.85)',
+              }} />
+            ))}
+          </View>
+          <Text style={{ flex: 1, color: '#ffffff', fontSize: UI.banner.font, fontWeight: '500' }}>
+            Создайте свой аватар
+          </Text>
+          <View style={{ marginRight: 10 }}>
+            <ChevronRight size={20} color="#ffffff" />
+          </View>
+        </TouchableOpacity>
+
         {/* аватарка: поверх неё затемнение, поверх затемнения — фотоаппарат */}
-        <View style={{ alignItems: 'center', marginTop: 5.4 }}>
+        <View style={{ alignItems: 'center', marginTop: UI.banner.gap }}>
           <TouchableOpacity onPress={pickAvatar}>
             <View style={{ width: UI.avatar, height: UI.avatar }}>
               <Image
@@ -238,39 +271,13 @@ export default function EditProfileScreen() {
         <SectionTitle>Основные сведения</SectionTitle>
         <Card>
           <Row label="Описание" value={currentUser.bio} onPress={() => openEditor('bio')} />
-          <Row label="Ссылки" value="Добавить ссылку" muted />
+          <Row label="Местоимение" value="Добавить местоимения" muted />
         </Card>
 
-        <SectionTitle>Сведения о компании</SectionTitle>
+        <SectionTitle>Другое</SectionTitle>
         <Card>
-          <Row label="Кнопки действий" />
-          <Row label="Отображение профиля" />
-          <Row label="Лиды" value="Выберите призыв к действию" muted />
-          <Row label="Категория" value="Другое" />
-          <Row label="TikTok Shop for Seller" />
-        </Card>
-
-        <SectionTitle>Изменение порядка отображения</SectionTitle>
-        <Card>
-          <View style={{
-            flexDirection: 'row', alignItems: 'center',
-            paddingLeft: UI.padL, paddingRight: UI.studioIconPad,
-            minHeight: UI.studioH,
-          }}>
-            <Text style={{
-              flex: 1, color: UI.text,
-              fontSize: UI.font, lineHeight: UI.line, fontWeight: '600',
-            }}>
-              TikTok Studio
-            </Text>
-            <Image
-              source={MENU}
-              style={{
-                height: UI.studioIcon, width: UI.studioIcon * UI.studioIconRatio,
-                tintColor: UI.studioIconColor,
-              }}
-              resizeMode="contain"
-            />
+          <View style={{ minHeight: UI.singleRowH, justifyContent: 'center' }}>
+            <Row label="Сбор средств" value="Добавить сбор средств" muted />
           </View>
         </Card>
       </ScrollView>
