@@ -10,7 +10,7 @@ import { Text } from '../../components/FixedText';
 import { Check, Smartphone } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader, UI } from '../../components/settings/ui';
-import { DEVICES, useDeviceId, setDeviceId, detectDevice, findDevice } from '../../lib/device';
+import { DEVICES, useDeviceId, setDeviceId, detectDevice, findDevice, twinNames } from '../../lib/device';
 
 function Row({ title, subtitle, on, onPress }: { title: string; subtitle: string; on: boolean; onPress: () => void }) {
   return (
@@ -50,7 +50,7 @@ export default function DeviceSettings() {
         }}>
           <Smartphone size={18} color={UI.muted} />
           <Text style={{ color: UI.muted, fontSize: 13, marginLeft: 10, flex: 1, lineHeight: 18 }}>
-            Сейчас: {current ? current.name : `автоматически${guess ? ` — похоже на ${guess.name}` : ''}`}
+            Сейчас: {current ? current.name : `автоматически${guess ? ` — похоже на iPhone ${twinNames(guess)}` : ''}`}
             {'\n'}Экран {Math.round(width)} × {Math.round(height)}, отступ сверху {Math.round(insets.top)}
             {Platform.OS === 'web' ? '\nВ браузере после выбора страница перезагрузится.' : ''}
           </Text>

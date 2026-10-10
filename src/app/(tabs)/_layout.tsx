@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
 import { PlatformPressable } from 'expo-router/react-navigation';
 import { IconHome, IconFriends, IconInbox, IconProfile, IconCreate } from '../../components/TabIcons';
 
@@ -24,6 +25,8 @@ export default function TabsLayout() {
         tabBarLabelStyle: {
           fontSize: 10,        // размер снят с эталона
           fontWeight: '500',   // по эталону подписи средней толщины, не жирные
+          /* в браузере подпись сжималась до полоски — не даём ей сжиматься, как на телефоне */
+          ...(Platform.OS === 'web' ? { flexShrink: 0, overflow: 'visible' as const } : {}),
         },
       }}
     >

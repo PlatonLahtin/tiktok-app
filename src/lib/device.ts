@@ -77,6 +77,11 @@ export function detectDevice(w: number, h: number, top?: number): Device | undef
   return [...DEVICES].sort((a, b) => Math.abs(a.w - w) - Math.abs(b.w - w) || Math.abs(a.h - h) - Math.abs(b.h - h))[0];
 }
 
+/* все модели с таким же экраном и отступами — «iPhone 12 Pro Max / 13 Pro Max / 14 Plus» */
+export function twinNames(d: Device) {
+  return DEVICES.filter((x) => x.w === d.w && x.h === d.h && x.top === d.top).map((x) => x.name.replace('iPhone ', '')).join(' / ');
+}
+
 /* ── выбранное устройство: «auto» или id модели ── */
 let selected = 'auto';
 const listeners = new Set<(id: string) => void>();
