@@ -2,7 +2,7 @@
    и надпись на значке «Входящие». Всё сохраняется в память телефона. */
 
 import React from 'react';
-import { View, ScrollView, Keyboard } from 'react-native';
+import { View, ScrollView, Keyboard, Switch } from 'react-native';
 import { TouchableOpacity } from '../../components/Touchable';
 import { Text } from '../../components/FixedText';
 import { useVideoStore } from '../../store/useVideoStore';
@@ -64,6 +64,25 @@ export default function VisualSettings() {
             ))}
           </View>
         ))}
+
+        {/* автоматическое изменение двух чисел */}
+        <View style={{ backgroundColor: UI.bg, borderRadius: UI.radius, padding: 14, marginBottom: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ color: UI.text, fontSize: 15, fontWeight: '700', flex: 1 }}>Автоматическое изменение</Text>
+            <Switch
+              value={!!currentUser.autoCounts}
+              onValueChange={(v) => {
+                updateProfile({ autoCounts: v });
+                if (v) useVideoStore.getState().rerollCounts();   // сразу показать, как работает
+              }}
+            />
+          </View>
+          <Text style={{ color: UI.muted, fontSize: 12, marginTop: 8, lineHeight: 17 }}>
+            Для чего: чтобы число у кружков-аватарок и значок «Входящие» не стояли всегда одни и те же,
+            как у живого аккаунта. Когда включено, при каждом открытии приложения они сами меняются
+            на случайные — от 1 до 98, иногда «99+». Вписанные выше значения при этом заменяются.
+          </Text>
+        </View>
 
         <TouchableOpacity
           onPress={() => updateProfile(DEFAULTS)}

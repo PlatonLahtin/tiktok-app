@@ -251,6 +251,7 @@ export interface UserProfile {
   likes: string;
   peekCount: string;    // число у кружков-аватарок «недавно смотрели профиль»
   inboxBadge: string;   // надпись на значке «Входящие»; пусто — значка нет
+  autoCounts?: boolean; // эти два числа сами меняются при каждом открытии приложения
 }
 
 /* строка в списке аккаунтов: чтобы показать его, не открывая */
@@ -302,6 +303,7 @@ interface VideoState {
   setShowAuthModal: (show: boolean) => void;
   currentUser: UserProfile;
   updateProfile: (profile: Partial<UserProfile>) => void;
+  rerollCounts: () => void;
   hydrateProfile: () => Promise<void>;
   myVideos: MyVideo[];
   addMyVideo: (file?: { uri: string; duration: number }) => void;
@@ -611,6 +613,14 @@ export const useVideoStore = create<VideoState>((set, get) => ({
   },
 
   // читаем сохранённое при запуске приложения
+  /* «Автоматическое изменение»: новое случайное число у кружков-аватарок
+     и на «Входящих» — от 1 до 98, иногда «99+» */
+  rerollCounts: () => {
+    if (!get().currentUser.autoCounts) return;
+    const rnd = () => (Math.random() < 0.12 ? '99+' : String(1 + Math.floor(Math.random() * 98)));
+    get().updateProfile({ peekCount: rnd(), inboxBadge: rnd() });
+  },
+
   hydrateProfile: async () => {
     try {
       const raw = await getStored(k(PROFILE_KEY));
@@ -625,6 +635,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
     } catch {
       // нет сохранённого или память недоступна — остаёмся на значениях по умолчанию
     }
+    get().rerollCounts();   // открыли приложение (или сменили аккаунт) — новые числа
   },
   videos: [
     {

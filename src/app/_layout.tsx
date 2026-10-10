@@ -1,6 +1,6 @@
 import '../global.css';
 import React, { useEffect } from 'react';
-import { Dimensions, Platform } from 'react-native';
+import { Dimensions, Platform, AppState } from 'react-native';
 import { SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDeviceId, findDevice, detectDevice } from '../lib/device';
 import { Stack, ThemeProvider, DarkTheme } from 'expo-router';
@@ -35,6 +35,16 @@ export default function RootLayout() {
   useEffect(() => {
     hydrateAll();
   }, [hydrateAll]);
+
+  /* вернулись в приложение из фона — тоже новые числа (если включено «Автоматическое изменение») */
+  useEffect(() => {
+    let last = AppState.currentState;
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active' && last !== 'active') useVideoStore.getState().rerollCounts();
+      last = st;
+    });
+    return () => sub.remove();
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#000000' }}>
