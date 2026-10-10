@@ -41,7 +41,7 @@ export const mmss = (sec: number) => {
 export function PauseIcon({ visible }: { visible: boolean }) {
   const a = useRef(new Animated.Value(visible ? 1 : 0)).current;
   useEffect(() => {
-    Animated.timing(a, { toValue: visible ? 1 : 0, duration: 180, useNativeDriver: native }).start();
+    Animated.timing(a, { toValue: visible ? 1 : 0, duration: 90, useNativeDriver: native }).start();
   }, [visible, a]);
   const I = SCRUB.icon;
   return (

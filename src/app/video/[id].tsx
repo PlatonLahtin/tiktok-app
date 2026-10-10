@@ -3,8 +3,8 @@
    три точки, снизу полоса с просмотрами и кнопкой.
    Все числа сняты с эталона, в точках экрана. */
 
-import React, { useCallback, useRef, useState } from 'react';
-import { View, Image, StatusBar, Dimensions, Pressable, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Image, StatusBar, Dimensions, Pressable, StyleSheet, FlatList } from 'react-native';
 import { TouchableOpacity } from '../../components/Touchable';
 import { Text } from '../../components/FixedText';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
@@ -12,7 +12,7 @@ import { ChevronLeft, Search } from 'lucide-react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEventListener } from 'expo';
 import Svg, { Path } from 'react-native-svg';
-import { useVideoStore, videoSource, shownCount } from '../../store/useVideoStore';
+import { useVideoStore, videoSource, shownCount, MyVideo } from '../../store/useVideoStore';
 import { roundedTriangle } from '../../lib/shapes';
 import ShareSheet from '../../components/ShareSheet';
 import LikerBubbles from '../../components/LikerBubbles';
@@ -71,23 +71,63 @@ const V = {
   },
 };
 
+/* Экран целиком: видео профиля листаются вверх-вниз, как в ленте.
+   Открывается на том видео, по которому нажали; порядок — как в сетке профиля. */
 export default function ProfileVideoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const myVideos = useVideoStore((s) => s.myVideos);
+  const start = Math.max(0, myVideos.findIndex((v) => v.id === id));
+  const [active, setActive] = useState(start);
+
+  if (myVideos.length === 0) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#000000', alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: '#888888' }}>Видео не найдено</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      <StatusBar barStyle="light-content" />
+      <FlatList
+        data={myVideos}
+        keyExtractor={(v) => v.id}
+        renderItem={({ item, index }) => <VideoPage video={item} active={index === active} />}
+        pagingEnabled
+        snapToInterval={height}
+        decelerationRate="fast"
+        showsVerticalScrollIndicator={false}
+        initialScrollIndex={start}
+        getItemLayout={(_, i) => ({ length: height, offset: height * i, index: i })}
+        /* какое видео сейчас на экране — по прокрутке (так работает и в браузере) */
+        onScroll={(e) => {
+          const i = Math.round(e.nativeEvent.contentOffset.y / height);
+          if (i !== active && i >= 0 && i < myVideos.length) setActive(i);
+        }}
+        scrollEventThrottle={16}
+        windowSize={3}
+        initialNumToRender={1}
+        maxToRenderPerBatch={2}
+      />
+    </View>
+  );
+}
+
+/* Одно видео на весь экран. Играет только то, что сейчас на экране */
+function VideoPage({ video, active }: { video: MyVideo; active: boolean }) {
   const router = useRouter();
-  const { myVideos, currentUser } = useVideoStore();
+  const currentUser = useVideoStore((s) => s.currentUser);
   const [shareOpen, setShareOpen] = useState(false);
 
-  const video = myVideos.find((v) => v.id === id) ?? myVideos[0];
-
-  const player = useVideoPlayer(videoSource(video ?? { uri: null }), (p) => {
+  const player = useVideoPlayer(videoSource(video), (p) => {
     p.loop = true;
     p.muted = false;
     p.timeUpdateEventInterval = 0.1;
-    p.play();
   });
 
   /* второй, беззвучный плеер — только для кадра над полосой при перемотке */
-  const preview = useVideoPlayer(videoSource(video ?? { uri: null }), (p) => {
+  const preview = useVideoPlayer(videoSource(video), (p) => {
     p.muted = true;
     p.loop = false;
   });
@@ -96,7 +136,7 @@ export default function ProfileVideoScreen() {
   const [paused, setPaused] = useState(false);
   const [dragFrac, setDragFrac] = useState<number | null>(null);   // не null — тянут полосу
   const [now, setNow] = useState(0);
-  const [dur, setDur] = useState(video?.duration ?? 0);
+  const [dur, setDur] = useState(video.duration ?? 0);
   useEventListener(player, 'timeUpdate', ({ currentTime }) => setNow(currentTime));
   useEventListener(player, 'sourceLoad', ({ duration }) => { if (duration > 0) setDur(duration); });
   const lastSeek = useRef(0);
@@ -123,25 +163,28 @@ export default function ProfileVideoScreen() {
   };
   const dragging = dragFrac !== null;
 
+  /* долистали до этого видео — играет с начала; ушли с него — стоп */
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  useEffect(() => {
+    try {
+      if (active) { player.currentTime = 0; player.play(); }
+      else { player.pause(); }
+    } catch { /* плеер уже отпущен */ }
+    setPaused(false);
+    setDragFrac(null);
+  }, [active, player]);
+
   /* ушли на другой экран (статистика лежит поверх этого) — на паузу,
      вернулись — играем дальше; иначе звук идёт из-под статистики */
   useFocusEffect(
     useCallback(() => {
-      player.play();
-      setPaused(false);
+      if (activeRef.current) { player.play(); setPaused(false); }
       return () => {
         try { player.pause(); } catch { /* экран закрыли — плеер уже отпущен */ }
       };
     }, [player]),
   );
-
-  if (!video) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#000000', alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#888888' }}>Видео не найдено</Text>
-      </View>
-    );
-  }
 
   const value = (key: string) =>
     shownCount(video, key === 'likes' ? 'screenLikes' : key === 'comments' ? 'screenComments' : 'screenSaves');
@@ -149,9 +192,7 @@ export default function ProfileVideoScreen() {
   const T = V.views.tri;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000000' }}>
-      <StatusBar barStyle="light-content" />
-
+    <View style={{ width, height, backgroundColor: '#000000' }}>
       <VideoView
         player={player}
         style={{ position: 'absolute', left: 0, top: 0, width, height }}
@@ -253,7 +294,7 @@ export default function ProfileVideoScreen() {
       {/* нет лайков — некому и всплывать */}
       {/* пока тянут полосу — всё лишнее прячется (как в приложении) */}
       <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 10, opacity: dragging ? 0 : 1 }]}>
-        {!/^\s*0?\s*$/.test(shownCount(video, 'screenLikes')) && <LikerBubbles />}
+        {active && !/^\s*0?\s*$/.test(shownCount(video, 'screenLikes')) && <LikerBubbles />}
       </View>
 
       {/* ник и описание */}
